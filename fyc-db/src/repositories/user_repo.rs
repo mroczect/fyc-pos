@@ -13,13 +13,7 @@ impl UserRepo {
         Self { pool }
     }
 
-    pub fn create_user(
-        &self,
-        username: &str,
-        password_hash: &str,
-        public_key: &str,
-        encrypted_private_key: &str,
-    ) -> Result<i64, DbError> {
+    fn validate_username(username: &str) -> Result<(), DbError> {
         if username.len() < 3 || username.len() > 30 {
             return Err(DbError::InvalidInput(
                 "Username must be 3-30 characters".into(),
@@ -30,13 +24,56 @@ impl UserRepo {
                 "Username can only contain alphanumeric and underscore".into(),
             ));
         }
+        Ok(())
+    }
 
+    pub fn create_user(
+        &self,
+        username: &str,
+        password_hash: &str,
+        public_key: &str,
+        encrypted_private_key: &str,
+    ) -> Result<i64, DbError> {
+        Self::validate_username(username)?;
         let conn = self.pool.get()?;
+        Self::insert_user(
+            &conn,
+            username,
+            password_hash,
+            public_key,
+            encrypted_private_key,
+        )
+    }
+
+    pub fn create_user_with_conn(
+        &self,
+        conn: &rusqlite::Connection,
+        username: &str,
+        password_hash: &str,
+        public_key: &str,
+        encrypted_private_key: &str,
+    ) -> Result<i64, DbError> {
+        Self::validate_username(username)?;
+        Self::insert_user(
+            conn,
+            username,
+            password_hash,
+            public_key,
+            encrypted_private_key,
+        )
+    }
+
+    fn insert_user(
+        conn: &rusqlite::Connection,
+        username: &str,
+        password_hash: &str,
+        public_key: &str,
+        encrypted_private_key: &str,
+    ) -> Result<i64, DbError> {
         let result = conn.execute(
             "INSERT INTO users (username, password_hash, public_key, encrypted_private_key) VALUES (?1, ?2, ?3, ?4)",
             params![username, password_hash, public_key, encrypted_private_key],
         );
-
         match result {
             Ok(_) => Ok(conn.last_insert_rowid()),
             Err(rusqlite::Error::SqliteFailure(err, _))
