@@ -224,26 +224,6 @@ fn test_session_duplicate_token_hash() {
 }
 
 #[test]
-fn test_foreign_key_cascade() {
-    let (_dir, pool) = setup();
-    let user_repo = UserRepo::new(pool.clone());
-    let role_repo = RoleRepo::new(pool.clone());
-    let session_repo = SessionRepo::new(pool);
-    let user_id = user_repo
-        .create_user("cascadeuser", "hash", "pk", "ek")
-        .unwrap();
-    let role_id = role_repo.create_role("testrole", "Test").unwrap();
-    role_repo.assign_role_to_user(user_id, role_id).unwrap();
-    session_repo
-        .create_session(user_id, "tokenhash", "2099-01-01")
-        .unwrap();
-
-    user_repo.deactivate_user(user_id).unwrap();
-    let err = role_repo.assign_role_to_user(99999, role_id).unwrap_err();
-    assert!(matches!(err, DbError::DuplicateEntry(_)));
-}
-
-#[test]
 fn test_create_permission() {
     let (_dir, pool) = setup();
     let perm_repo = fyc_db::repositories::PermissionRepo::new(pool);
@@ -320,4 +300,56 @@ fn test_audit_log() {
         )
         .unwrap();
     assert_eq!(count, 1);
+}
+
+#[test]
+fn test_foreign_key_constraint_on_assign() {
+    let (_dir, pool) = setup();
+    let _user_repo = UserRepo::new(pool.clone());
+    let role_repo = RoleRepo::new(pool.clone());
+    let role_id = role_repo.create_role("testrole", "Test").unwrap();
+    let err = role_repo.assign_role_to_user(99999, role_id).unwrap_err();
+    assert!(matches!(err, DbError::DuplicateEntry(_)));
+}
+
+#[test]
+fn test_cascade_delete_user() {
+    let (_dir, pool) = setup();
+    let user_repo = UserRepo::new(pool.clone());
+    let role_repo = RoleRepo::new(pool.clone());
+    let session_repo = SessionRepo::new(pool.clone());
+
+    let user_id = user_repo
+        .create_user("cascadeuser", "hash", "pk", "ek")
+        .unwrap();
+    let role_id = role_repo.create_role("cascade_role", "Test").unwrap();
+    role_repo.assign_role_to_user(user_id, role_id).unwrap();
+    session_repo
+        .create_session(user_id, "cascade_token", "2099-01-01")
+        .unwrap();
+
+    let conn = pool.get().unwrap();
+    conn.execute(
+        "DELETE FROM users WHERE id = ?1",
+        rusqlite::params![user_id],
+    )
+    .unwrap();
+
+    let count_roles: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM user_roles WHERE user_id = ?1",
+            rusqlite::params![user_id],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(count_roles, 0);
+
+    let count_sessions: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM sessions WHERE user_id = ?1",
+            rusqlite::params![user_id],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(count_sessions, 0);
 }

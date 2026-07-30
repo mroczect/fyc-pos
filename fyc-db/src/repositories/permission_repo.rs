@@ -2,7 +2,7 @@ use crate::error::DbError;
 use crate::models::Permission;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
-use rusqlite::params;
+use rusqlite::{ErrorCode, params};
 
 pub struct PermissionRepo {
     pool: Pool<SqliteConnectionManager>,
@@ -20,11 +20,18 @@ impl PermissionRepo {
             ));
         }
         let conn = self.pool.get()?;
-        conn.execute(
+        match conn.execute(
             "INSERT INTO permissions (name, description) VALUES (?1, ?2)",
             params![name.trim(), description],
-        )?;
-        Ok(conn.last_insert_rowid())
+        ) {
+            Ok(_) => Ok(conn.last_insert_rowid()),
+            Err(rusqlite::Error::SqliteFailure(err, _))
+                if err.code == ErrorCode::ConstraintViolation =>
+            {
+                Err(DbError::DuplicateEntry("Permission already exists".into()))
+            }
+            Err(e) => Err(DbError::QueryError(e)),
+        }
     }
 
     pub fn get_by_name(&self, name: &str) -> Result<Option<Permission>, DbError> {

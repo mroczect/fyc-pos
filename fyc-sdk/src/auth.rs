@@ -121,14 +121,6 @@ impl AuthService {
             .session_repo()
             .find_valid_session(&token_hash)?
             .ok_or_else(|| SdkError::AuthFailed("Invalid or expired session".into()))?;
-
-        let user = self
-            .user_repo()
-            .find_by_id(session.user_id)?
-            .ok_or_else(|| SdkError::AuthFailed("User account is deactivated".into()))?;
-        if !user.is_active {
-            return Err(SdkError::AuthFailed("User account is deactivated".into()));
-        }
         Ok(session.user_id)
     }
 
