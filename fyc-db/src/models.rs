@@ -46,3 +46,13 @@ pub struct RolePermission {
     pub role_id: i64,
     pub permission_id: i64,
 }
+
+#[derive(Debug, Clone)]
+pub struct AuditLog {
+    pub id: i64,
+    pub admin_id: i64,
+    pub action: String,
+    pub target_user_id: Option<i64>,
+    pub details: Option<String>,
+    pub created_at: String,
+}
