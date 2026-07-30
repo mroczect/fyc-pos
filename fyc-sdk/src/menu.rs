@@ -8,7 +8,6 @@ pub struct MenuService {
     pool: DbPool,
     product_repo: ProductRepo,
     custom_repo: ProductCustomRepo,
-    audit_repo: AuditRepo,
     auth: AuthService,
     permission: PermissionService,
 }
@@ -18,7 +17,6 @@ impl MenuService {
         Self {
             product_repo: ProductRepo::new(pool.clone()),
             custom_repo: ProductCustomRepo::new(pool.clone()),
-            audit_repo: AuditRepo::new(pool.clone()),
             auth: AuthService::new(pool.clone()),
             permission: PermissionService::new(pool.clone()),
             pool,
@@ -67,10 +65,11 @@ impl MenuService {
             return Err(e.into());
         }
 
-        conn.execute("COMMIT", []).map_err(|e| {
-            let _ = conn.execute("ROLLBACK", []);
-            DbError::from(e)
-        })?;
+        conn.execute("COMMIT", [])
+            .inspect_err(|_| {
+                let _ = conn.execute("ROLLBACK", []);
+            })
+            .map_err(DbError::from)?;
         Ok(id)
     }
 
@@ -103,10 +102,11 @@ impl MenuService {
             return Err(e.into());
         }
 
-        conn.execute("COMMIT", []).map_err(|e| {
-            let _ = conn.execute("ROLLBACK", []);
-            DbError::from(e)
-        })?;
+        conn.execute("COMMIT", [])
+            .inspect_err(|_| {
+                let _ = conn.execute("ROLLBACK", []);
+            })
+            .map_err(DbError::from)?;
         Ok(())
     }
 
@@ -126,10 +126,11 @@ impl MenuService {
             return Err(e.into());
         }
 
-        conn.execute("COMMIT", []).map_err(|e| {
-            let _ = conn.execute("ROLLBACK", []);
-            DbError::from(e)
-        })?;
+        conn.execute("COMMIT", [])
+            .inspect_err(|_| {
+                let _ = conn.execute("ROLLBACK", []);
+            })
+            .map_err(DbError::from)?;
         Ok(())
     }
 
@@ -167,10 +168,11 @@ impl MenuService {
             return Err(e.into());
         }
 
-        conn.execute("COMMIT", []).map_err(|e| {
-            let _ = conn.execute("ROLLBACK", []);
-            DbError::from(e)
-        })?;
+        conn.execute("COMMIT", [])
+            .inspect_err(|_| {
+                let _ = conn.execute("ROLLBACK", []);
+            })
+            .map_err(DbError::from)?;
         Ok(id)
     }
 
@@ -207,10 +209,11 @@ impl MenuService {
             return Err(e.into());
         }
 
-        conn.execute("COMMIT", []).map_err(|e| {
-            let _ = conn.execute("ROLLBACK", []);
-            DbError::from(e)
-        })?;
+        conn.execute("COMMIT", [])
+            .inspect_err(|_| {
+                let _ = conn.execute("ROLLBACK", []);
+            })
+            .map_err(DbError::from)?;
         Ok(())
     }
 
