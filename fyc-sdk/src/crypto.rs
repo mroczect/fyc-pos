@@ -42,7 +42,9 @@ pub fn generate_age_keypair() -> Result<(String, Zeroizing<String>), SdkError> {
         let msg = response.error.map(|e| e.message).unwrap_or_default();
         return Err(SdkError::Crypto(format!("Key generation failed: {msg}")));
     }
-    let data = response.data.unwrap();
+    let data = response
+        .data
+        .ok_or_else(|| SdkError::Crypto("Key generation returned no data".into()))?;
     Ok((data.public_key, data.secret_key))
 }
 
@@ -55,7 +57,10 @@ pub fn encrypt_private_key_with_password(
         let msg = response.error.map(|e| e.message).unwrap_or_default();
         return Err(SdkError::Crypto(format!("Encryption failed: {msg}")));
     }
-    Ok(response.data.unwrap().as_string())
+    let encrypted = response
+        .data
+        .ok_or_else(|| SdkError::Crypto("Encryption returned no data".into()))?;
+    Ok(encrypted.as_string())
 }
 
 pub fn decrypt_private_key_with_password(
@@ -69,5 +74,8 @@ pub fn decrypt_private_key_with_password(
         let msg = response.error.map(|e| e.message).unwrap_or_default();
         return Err(SdkError::Crypto(format!("Decryption failed: {msg}")));
     }
-    Ok(Zeroizing::new(response.data.unwrap().as_string()))
+    let decrypted = response
+        .data
+        .ok_or_else(|| SdkError::Crypto("Decryption returned no data".into()))?;
+    Ok(Zeroizing::new(decrypted.as_string()))
 }
