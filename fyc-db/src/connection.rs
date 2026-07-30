@@ -4,7 +4,11 @@ use r2d2_sqlite::SqliteConnectionManager;
 use std::path::Path;
 
 pub fn create_pool<P: AsRef<Path>>(db_path: P) -> Result<Pool<SqliteConnectionManager>, DbError> {
-    let manager = SqliteConnectionManager::file(db_path);
+    let manager = SqliteConnectionManager::file(db_path).with_init(|conn| {
+        conn.execute_batch("PRAGMA foreign_keys = ON;")
+            .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))
+    });
+
     let pool = Pool::builder()
         .max_size(4)
         .build(manager)
@@ -17,10 +21,7 @@ pub fn create_pool<P: AsRef<Path>>(db_path: P) -> Result<Pool<SqliteConnectionMa
     Ok(pool)
 }
 
-fn run_migrations(conn: &rusqlite::Connection) -> Result<(), DbError> {
-    conn.execute_batch("PRAGMA foreign_keys = ON;")
-        .map_err(|e| DbError::MigrationFailed(e.to_string()))?;
-
+pub fn run_migrations(conn: &rusqlite::Connection) -> Result<(), DbError> {
     conn.execute_batch(
         "
         CREATE TABLE IF NOT EXISTS roles (
@@ -57,20 +58,7 @@ fn run_migrations(conn: &rusqlite::Connection) -> Result<(), DbError> {
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         );
 
-        -- Future tables (not used yet)
-        CREATE TABLE IF NOT EXISTS permissions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL UNIQUE COLLATE NOCASE,
-            description TEXT DEFAULT ''
-        );
-
-        CREATE TABLE IF NOT EXISTS role_permissions (
-            role_id INTEGER NOT NULL,
-            permission_id INTEGER NOT NULL,
-            PRIMARY KEY (role_id, permission_id),
-            FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
-            FOREIGN KEY (permission_id) REFERENCES permissions(id) ON DELETE CASCADE
-        );
+        CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
         ",
     )
     .map_err(|e| DbError::MigrationFailed(e.to_string()))?;
