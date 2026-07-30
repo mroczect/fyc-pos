@@ -73,7 +73,7 @@ pub fn run_migrations(conn: &rusqlite::Connection) -> Result<(), DbError> {
         );
         CREATE TABLE IF NOT EXISTS products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
+            name TEXT NOT NULL UNIQUE COLLATE NOCASE,
             price REAL NOT NULL CHECK(price >= 0),
             category TEXT DEFAULT '',
             is_active INTEGER NOT NULL DEFAULT 1 CHECK(is_active IN (0,1)),
@@ -93,7 +93,8 @@ pub fn run_migrations(conn: &rusqlite::Connection) -> Result<(), DbError> {
             field_id INTEGER NOT NULL,
             value TEXT NOT NULL,
             FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-            FOREIGN KEY (field_id) REFERENCES product_custom_fields(id) ON DELETE CASCADE
+            FOREIGN KEY (field_id) REFERENCES product_custom_fields(id) ON DELETE CASCADE,
+            UNIQUE(product_id, field_id)
         );
         
         CREATE TABLE IF NOT EXISTS orders (
@@ -104,6 +105,7 @@ pub fn run_migrations(conn: &rusqlite::Connection) -> Result<(), DbError> {
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             FOREIGN KEY (user_id) REFERENCES users(id)
         );
+        CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at);
         
         CREATE TABLE IF NOT EXISTS order_items (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -114,6 +116,7 @@ pub fn run_migrations(conn: &rusqlite::Connection) -> Result<(), DbError> {
             FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
             FOREIGN KEY (product_id) REFERENCES products(id)
         );
+        CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id);
         ",
     )
     .map_err(|e| DbError::MigrationFailed(e.to_string()))?;
