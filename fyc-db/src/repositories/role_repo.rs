@@ -221,29 +221,4 @@ impl RoleRepo {
         )?;
         Ok(stmt.exists(params![user_id, role_name])?)
     }
-    pub fn assign_permission_to_role(
-        &self,
-        role_id: i64,
-        permission_id: i64,
-    ) -> Result<(), DbError> {
-        let conn = self.pool.get()?;
-        conn.execute(
-            "INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (?1, ?2)",
-            params![role_id, permission_id],
-        )?;
-        Ok(())
-    }
-
-    pub fn remove_permission_from_role(
-        &self,
-        role_id: i64,
-        permission_id: i64,
-    ) -> Result<(), DbError> {
-        let conn = self.pool.get()?;
-        conn.execute(
-            "DELETE FROM role_permissions WHERE role_id = ?1 AND permission_id = ?2",
-            params![role_id, permission_id],
-        )?;
-        Ok(())
-    }
 }
