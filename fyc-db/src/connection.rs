@@ -8,15 +8,11 @@ pub fn create_pool<P: AsRef<Path>>(db_path: P) -> Result<Pool<SqliteConnectionMa
         conn.execute_batch("PRAGMA foreign_keys = ON;")
             .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))
     });
-
     let pool = Pool::builder()
         .max_size(4)
         .build(manager)
         .map_err(|e| DbError::PoolCreation(e.to_string()))?;
-
-    let conn = pool
-        .get()
-        .map_err(|e| DbError::PoolCreation(e.to_string()))?;
+    let conn = pool.get()?;
     run_migrations(&conn)?;
     Ok(pool)
 }
@@ -29,7 +25,6 @@ pub fn run_migrations(conn: &rusqlite::Connection) -> Result<(), DbError> {
             name TEXT NOT NULL UNIQUE COLLATE NOCASE,
             description TEXT DEFAULT ''
         );
-
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL UNIQUE COLLATE NOCASE,
@@ -40,7 +35,6 @@ pub fn run_migrations(conn: &rusqlite::Connection) -> Result<(), DbError> {
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             updated_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
-
         CREATE TABLE IF NOT EXISTS user_roles (
             user_id INTEGER NOT NULL,
             role_id INTEGER NOT NULL,
@@ -48,7 +42,6 @@ pub fn run_migrations(conn: &rusqlite::Connection) -> Result<(), DbError> {
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
             FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
         );
-
         CREATE TABLE IF NOT EXISTS sessions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
@@ -57,11 +50,9 @@ pub fn run_migrations(conn: &rusqlite::Connection) -> Result<(), DbError> {
             expires_at TEXT NOT NULL,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         );
-
         CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
         ",
     )
     .map_err(|e| DbError::MigrationFailed(e.to_string()))?;
-
     Ok(())
 }
