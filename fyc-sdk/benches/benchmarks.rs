@@ -16,7 +16,8 @@ fn bench_register(c: &mut Criterion) {
             let username = format!("user{}", id);
             auth.register(&username, "password123").unwrap();
         })
-    });
+    })
+    .sample_size(10);
 }
 
 fn bench_login(c: &mut Criterion) {
