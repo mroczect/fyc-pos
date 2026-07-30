@@ -53,4 +53,4 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Run benchmarks (fyc-sdk only)
-        run: cargo bench -p fyc-sdk -- --sample-size 30
+        run: cargo bench -p fyc-sdk --bench benchmarks
