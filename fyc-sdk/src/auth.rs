@@ -88,7 +88,10 @@ impl AuthService {
             return Err(e.into());
         }
 
-        conn.execute("COMMIT", []).map_err(DbError::from)?;
+        conn.execute("COMMIT", []).map_err(|e| {
+            let _ = conn.execute("ROLLBACK", []);
+            DbError::from(e)
+        })?;
         Ok(user_id)
     }
 
