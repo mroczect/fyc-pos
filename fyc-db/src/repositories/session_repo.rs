@@ -2,7 +2,7 @@ use crate::error::DbError;
 use crate::models::Session;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
-use rusqlite::params;
+use rusqlite::{ErrorCode, params};
 
 pub struct SessionRepo {
     pool: Pool<SqliteConnectionManager>,
@@ -20,11 +20,20 @@ impl SessionRepo {
         expires_at: &str,
     ) -> Result<i64, DbError> {
         let conn = self.pool.get()?;
-        conn.execute(
+        match conn.execute(
             "INSERT INTO sessions (user_id, token_hash, expires_at) VALUES (?1, ?2, ?3)",
             params![user_id, token_hash, expires_at],
-        )?;
-        Ok(conn.last_insert_rowid())
+        ) {
+            Ok(_) => Ok(conn.last_insert_rowid()),
+            Err(rusqlite::Error::SqliteFailure(err, _))
+                if err.code == ErrorCode::ConstraintViolation =>
+            {
+                Err(DbError::DuplicateEntry(
+                    "Session token hash already exists".into(),
+                ))
+            }
+            Err(e) => Err(DbError::QueryError(e)),
+        }
     }
 
     pub fn delete_session_by_token_hash(&self, token_hash: &str) -> Result<(), DbError> {
