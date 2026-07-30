@@ -9,3 +9,12 @@ r2d2 = "0.8"
 r2d2_sqlite = "0.25"
 thiserror = "2"
 zeroize = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+tempfile = "3"
+criterion = "0.5"
+rand = "0.8"
+
+[[bench]]
+name = "benchmarks"
+harness = false
