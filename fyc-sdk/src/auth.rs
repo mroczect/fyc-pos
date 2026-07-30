@@ -5,21 +5,19 @@ use fyc_db::{DbError, DbPool};
 
 pub struct AuthService {
     pool: DbPool,
+    user_repo: UserRepo,
+    role_repo: RoleRepo,
+    session_repo: SessionRepo,
 }
 
 impl AuthService {
     pub fn new(pool: DbPool) -> Self {
-        Self { pool }
-    }
-
-    fn user_repo(&self) -> UserRepo {
-        UserRepo::new(self.pool.clone())
-    }
-    fn role_repo(&self) -> RoleRepo {
-        RoleRepo::new(self.pool.clone())
-    }
-    fn session_repo(&self) -> SessionRepo {
-        SessionRepo::new(self.pool.clone())
+        Self {
+            user_repo: UserRepo::new(pool.clone()),
+            role_repo: RoleRepo::new(pool.clone()),
+            session_repo: SessionRepo::new(pool.clone()),
+            pool,
+        }
     }
 
     pub fn register(&self, username: &str, password: &str) -> Result<i64, SdkError> {
@@ -37,7 +35,8 @@ impl AuthService {
         let conn = self.pool.get().map_err(DbError::from)?;
         conn.execute("BEGIN", []).map_err(DbError::from)?;
 
-        let user_id = match self.user_repo().create_user(
+        let user_id = match self.user_repo.create_user_with_conn(
+            &conn,
             username,
             &password_hash,
             &public_key,
@@ -51,17 +50,21 @@ impl AuthService {
         };
 
         let default_role = "kasir";
-        let role_id = match self.role_repo().get_role_by_name(default_role) {
+        let role_id = match self
+            .role_repo
+            .get_role_by_name_with_conn(&conn, default_role)
+        {
             Ok(Some(r)) => r.id,
             Ok(None) => {
-                match self
-                    .role_repo()
-                    .create_role(default_role, "Default cashier role")
-                {
+                match self.role_repo.create_role_with_conn(
+                    &conn,
+                    default_role,
+                    "Default cashier role",
+                ) {
                     Ok(id) => id,
                     Err(DbError::DuplicateEntry(_)) => {
-                        self.role_repo()
-                            .get_role_by_name(default_role)?
+                        self.role_repo
+                            .get_role_by_name_with_conn(&conn, default_role)?
                             .ok_or_else(|| SdkError::Internal("Role creation conflict".into()))?
                             .id
                     }
@@ -77,7 +80,10 @@ impl AuthService {
             }
         };
 
-        if let Err(e) = self.role_repo().assign_role_to_user(user_id, role_id) {
+        if let Err(e) = self
+            .role_repo
+            .assign_role_to_user_with_conn(&conn, user_id, role_id)
+        {
             let _ = conn.execute("ROLLBACK", []);
             return Err(e.into());
         }
@@ -88,7 +94,7 @@ impl AuthService {
 
     pub fn login(&self, username: &str, password: &str) -> Result<(String, i64), SdkError> {
         let user = self
-            .user_repo()
+            .user_repo
             .find_by_username(username)?
             .ok_or_else(|| SdkError::AuthFailed("Invalid username or password".into()))?;
 
@@ -96,21 +102,21 @@ impl AuthService {
             return Err(SdkError::AuthFailed("Invalid username or password".into()));
         }
 
-        self.session_repo().delete_all_for_user(user.id)?;
+        self.session_repo.delete_all_for_user(user.id)?;
 
         let token = crypto::generate_token()?;
         let token_hash = crypto::hash_token(&token);
         let expires_at = chrono::Utc::now() + chrono::Duration::hours(24);
         let expires_str = expires_at.format("%Y-%m-%d %H:%M:%S").to_string();
 
-        self.session_repo()
+        self.session_repo
             .create_session(user.id, &token_hash, &expires_str)?;
         Ok((token, user.id))
     }
 
     pub fn logout(&self, token: &str) -> Result<(), SdkError> {
         let token_hash = crypto::hash_token(token);
-        self.session_repo()
+        self.session_repo
             .delete_session_by_token_hash(&token_hash)?;
         Ok(())
     }
@@ -118,21 +124,16 @@ impl AuthService {
     pub fn validate_token(&self, token: &str) -> Result<i64, SdkError> {
         let token_hash = crypto::hash_token(token);
         let session = self
-            .session_repo()
+            .session_repo
             .find_valid_session(&token_hash)?
             .ok_or_else(|| SdkError::AuthFailed("Invalid or expired session".into()))?;
-
-        let user = self
-            .user_repo()
-            .find_by_id(session.user_id)?
-            .ok_or_else(|| SdkError::AuthFailed("User account is deactivated".into()))?;
-        if !user.is_active {
-            return Err(SdkError::AuthFailed("User account is deactivated".into()));
-        }
         Ok(session.user_id)
     }
 
     pub fn user_has_role(&self, user_id: i64, role_name: &str) -> Result<bool, SdkError> {
-        Ok(self.role_repo().has_role(user_id, role_name)?)
+        if role_name.trim().is_empty() {
+            return Ok(false);
+        }
+        Ok(self.role_repo.has_role(user_id, role_name)?)
     }
 }

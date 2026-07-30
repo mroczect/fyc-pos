@@ -48,8 +48,10 @@ impl SessionRepo {
     pub fn find_valid_session(&self, token_hash: &str) -> Result<Option<Session>, DbError> {
         let conn = self.pool.get()?;
         let mut stmt = conn.prepare(
-            "SELECT id, user_id, token_hash, created_at, expires_at FROM sessions
-             WHERE token_hash = ?1 AND expires_at > datetime('now')",
+            "SELECT s.id, s.user_id, s.token_hash, s.created_at, s.expires_at
+             FROM sessions s
+             JOIN users u ON s.user_id = u.id
+             WHERE s.token_hash = ?1 AND s.expires_at > datetime('now') AND u.is_active = 1",
         )?;
         let mut rows = stmt.query_map(params![token_hash], |row| {
             Ok(Session {

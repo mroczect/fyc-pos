@@ -48,4 +48,4 @@ ci: fmt-check clippy test
 ci-full: fmt-check clippy test bench
 
 snap:
-	snapcat src -f markdown -o dev/src.snapcat.md && snapcat tests -f markdown -o dev/tests.snapcat.md
+	snapcat fyc-db/ -f markdown -o dev/fyc-db.md && snapcat fyc-sdk -f markdown -o dev/fyc-sdk.md
