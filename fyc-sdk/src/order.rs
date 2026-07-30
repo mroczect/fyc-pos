@@ -6,9 +6,7 @@ use fyc_db::{DbError, DbPool, Order, OrderItem};
 
 pub struct OrderService {
     pool: DbPool,
-    product_repo: ProductRepo,
     order_repo: OrderRepo,
-    audit_repo: AuditRepo,
     auth: AuthService,
     permission: PermissionService,
 }
@@ -16,9 +14,7 @@ pub struct OrderService {
 impl OrderService {
     pub fn new(pool: DbPool) -> Self {
         Self {
-            product_repo: ProductRepo::new(pool.clone()),
             order_repo: OrderRepo::new(pool.clone()),
-            audit_repo: AuditRepo::new(pool.clone()),
             auth: AuthService::new(pool.clone()),
             permission: PermissionService::new(pool.clone()),
             pool,
@@ -47,9 +43,8 @@ impl OrderService {
 
         for &(product_id, quantity) in items {
             let product = ProductRepo::find_by_id_with_conn(&conn, product_id)
-                .map_err(|e| {
+                .inspect_err(|_| {
                     let _ = conn.execute("ROLLBACK", []);
-                    e
                 })?
                 .ok_or_else(|| {
                     let _ = conn.execute("ROLLBACK", []);
@@ -64,23 +59,15 @@ impl OrderService {
         let order_id = self
             .order_repo
             .create_order_with_conn(&conn, user_id, "paid", total)
-            .map_err(|e| {
+            .inspect_err(|_| {
                 let _ = conn.execute("ROLLBACK", []);
-                e
             })?;
 
-        for (product_id, quantity, unit_price) in &order_items {
-            OrderRepo::add_order_item_with_conn(
-                &conn,
-                order_id,
-                *product_id,
-                *quantity,
-                *unit_price,
-            )
-            .map_err(|e| {
-                let _ = conn.execute("ROLLBACK", []);
-                e
-            })?;
+        for &(product_id, quantity, unit_price) in &order_items {
+            OrderRepo::add_order_item_with_conn(&conn, order_id, product_id, quantity, unit_price)
+                .inspect_err(|_| {
+                    let _ = conn.execute("ROLLBACK", []);
+                })?;
         }
 
         AuditRepo::log_with_conn(
@@ -90,15 +77,15 @@ impl OrderService {
             Some(order_id),
             Some(&format!("total: {}", total)),
         )
-        .map_err(|e| {
+        .inspect_err(|_| {
             let _ = conn.execute("ROLLBACK", []);
-            e
         })?;
 
-        conn.execute("COMMIT", []).map_err(|e| {
-            let _ = conn.execute("ROLLBACK", []);
-            DbError::from(e)
-        })?;
+        conn.execute("COMMIT", [])
+            .inspect_err(|_| {
+                let _ = conn.execute("ROLLBACK", []);
+            })
+            .map_err(DbError::from)?;
 
         Ok(order_id)
     }
