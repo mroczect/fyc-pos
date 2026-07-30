@@ -1,15 +1,8 @@
-[package]
-name = "fyc-pos"
-version = "0.1.0"
-edition = "2024"
-
 [workspace]
 members = [
     "fyc-db",
-    "fyc-server",
     "fyc-sdk",
-    "fyc-serve",
+    "fyc-server",
+    "fyc-pos",
 ]
 resolver = "2"
-
-[dependencies]

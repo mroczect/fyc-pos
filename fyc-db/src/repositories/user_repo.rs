@@ -1,0 +1,122 @@
+use crate::error::DbError;
+use crate::models::User;
+use r2d2::Pool;
+use r2d2_sqlite::SqliteConnectionManager;
+use rusqlite::{ErrorCode, params};
+
+pub struct UserRepo {
+    pool: Pool<SqliteConnectionManager>,
+}
+
+impl UserRepo {
+    pub fn new(pool: Pool<SqliteConnectionManager>) -> Self {
+        Self { pool }
+    }
+
+    pub fn create_user(
+        &self,
+        username: &str,
+        password_hash: &str,
+        public_key: &str,
+        encrypted_private_key: &str,
+    ) -> Result<i64, DbError> {
+        if username.len() < 3 || username.len() > 30 {
+            return Err(DbError::InvalidInput(
+                "Username must be 3-30 characters".into(),
+            ));
+        }
+        if !username.chars().all(|c| c.is_alphanumeric() || c == '_') {
+            return Err(DbError::InvalidInput(
+                "Username can only contain alphanumeric and underscore".into(),
+            ));
+        }
+
+        let conn = self.pool.get()?;
+        let result = conn.execute(
+            "INSERT INTO users (username, password_hash, public_key, encrypted_private_key) VALUES (?1, ?2, ?3, ?4)",
+            params![username, password_hash, public_key, encrypted_private_key],
+        );
+
+        match result {
+            Ok(_) => Ok(conn.last_insert_rowid()),
+            Err(rusqlite::Error::SqliteFailure(err, _))
+                if err.code == ErrorCode::ConstraintViolation =>
+            {
+                Err(DbError::DuplicateEntry("Username already exists".into()))
+            }
+            Err(e) => Err(DbError::QueryError(e)),
+        }
+    }
+
+    pub fn find_by_username(&self, username: &str) -> Result<Option<User>, DbError> {
+        let conn = self.pool.get()?;
+        let mut stmt = conn.prepare(
+            "SELECT id, username, password_hash, public_key, encrypted_private_key, is_active, created_at, updated_at FROM users WHERE username = ?1 AND is_active = 1"
+        )?;
+        let mut rows = stmt.query_map(params![username], |row| {
+            Ok(User {
+                id: row.get(0)?,
+                username: row.get(1)?,
+                password_hash: row.get(2)?,
+                public_key: row.get(3)?,
+                encrypted_private_key: row.get(4)?,
+                is_active: row.get::<_, i32>(5)? == 1,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+            })
+        })?;
+
+        match rows.next() {
+            Some(user) => Ok(Some(user?)),
+            None => Ok(None),
+        }
+    }
+
+    pub fn find_by_id(&self, id: i64) -> Result<Option<User>, DbError> {
+        let conn = self.pool.get()?;
+        let mut stmt = conn.prepare(
+            "SELECT id, username, password_hash, public_key, encrypted_private_key, is_active, created_at, updated_at FROM users WHERE id = ?1 AND is_active = 1"
+        )?;
+        let mut rows = stmt.query_map(params![id], |row| {
+            Ok(User {
+                id: row.get(0)?,
+                username: row.get(1)?,
+                password_hash: row.get(2)?,
+                public_key: row.get(3)?,
+                encrypted_private_key: row.get(4)?,
+                is_active: row.get::<_, i32>(5)? == 1,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+            })
+        })?;
+
+        match rows.next() {
+            Some(user) => Ok(Some(user?)),
+            None => Ok(None),
+        }
+    }
+
+    pub fn deactivate_user(&self, user_id: i64) -> Result<(), DbError> {
+        let conn = self.pool.get()?;
+        let affected = conn.execute(
+            "UPDATE users SET is_active = 0, updated_at = datetime('now') WHERE id = ?1",
+            params![user_id],
+        )?;
+        if affected == 0 {
+            return Err(DbError::NotFound("User not found".into()));
+        }
+        Ok(())
+    }
+
+    pub fn update_password(&self, user_id: i64, new_password_hash: &str) -> Result<(), DbError> {
+        let conn = self.pool.get()?;
+        let affected = conn.execute(
+            "UPDATE users SET password_hash = ?1, updated_at = datetime('now') WHERE id = ?2",
+            params![new_password_hash, user_id],
+        )?;
+        if affected == 0 {
+            return Err(DbError::NotFound("User not found".into()));
+        }
+        Ok(())
+    }
+}
