@@ -242,3 +242,83 @@ fn test_foreign_key_cascade() {
     let err = role_repo.assign_role_to_user(99999, role_id).unwrap_err();
     assert!(matches!(err, DbError::DuplicateEntry(_)));
 }
+
+#[test]
+fn test_create_permission() {
+    let (_dir, pool) = setup();
+    let perm_repo = fyc_db::repositories::PermissionRepo::new(pool);
+    let id = perm_repo.create("user:create", "Create user").unwrap();
+    assert!(id > 0);
+    let perm = perm_repo.get_by_name("user:create").unwrap().unwrap();
+    assert_eq!(perm.name, "user:create");
+}
+
+#[test]
+fn test_assign_permission_to_role_and_check_user() {
+    let (_dir, pool) = setup();
+    let user_repo = UserRepo::new(pool.clone());
+    let role_repo = RoleRepo::new(pool.clone());
+    let perm_repo = fyc_db::repositories::PermissionRepo::new(pool.clone());
+
+    let user_id = user_repo
+        .create_user("permuser", "hash", "pk", "ek")
+        .unwrap();
+    let role_id = role_repo.create_role("tester", "Tester role").unwrap();
+    let perm_id = perm_repo.create("test:perm", "Test permission").unwrap();
+
+    role_repo.assign_role_to_user(user_id, role_id).unwrap();
+    role_repo
+        .assign_permission_to_role(role_id, perm_id)
+        .unwrap();
+
+    let perms = perm_repo.get_user_permissions(user_id).unwrap();
+    assert_eq!(perms.len(), 1);
+    assert_eq!(perms[0].name, "test:perm");
+}
+
+#[test]
+fn test_remove_permission_from_role() {
+    let (_dir, pool) = setup();
+    let role_repo = RoleRepo::new(pool.clone());
+    let perm_repo = fyc_db::repositories::PermissionRepo::new(pool.clone());
+
+    let role_id = role_repo.create_role("remover", "Remover role").unwrap();
+    let perm_id = perm_repo.create("temp:perm", "Temp").unwrap();
+
+    role_repo
+        .assign_permission_to_role(role_id, perm_id)
+        .unwrap();
+    role_repo
+        .remove_permission_from_role(role_id, perm_id)
+        .unwrap();
+
+    let user_repo = UserRepo::new(pool.clone());
+    let user_id = user_repo
+        .create_user("removeuser", "hash", "pk", "ek")
+        .unwrap();
+    role_repo.assign_role_to_user(user_id, role_id).unwrap();
+    let perms = perm_repo.get_user_permissions(user_id).unwrap();
+    assert!(perms.is_empty());
+}
+
+#[test]
+fn test_audit_log() {
+    let (_dir, pool) = setup();
+    let user_repo = UserRepo::new(pool.clone());
+    let audit_repo = fyc_db::repositories::AuditRepo::new(pool.clone());
+
+    let admin_id = user_repo.create_user("admin", "hash", "pk", "ek").unwrap();
+    audit_repo
+        .log(admin_id, "user:create", Some(admin_id), Some("test user"))
+        .unwrap();
+
+    let conn = pool.get().unwrap();
+    let count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM audit_log WHERE admin_id = ?1",
+            rusqlite::params![admin_id],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(count, 1);
+}
