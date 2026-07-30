@@ -880,11 +880,14 @@ version = "0.1.0"
 dependencies = [
  "argon2",
  "chrono",
+ "criterion",
  "fyc-db",
  "getrandom 0.2.17",
  "hex",
  "librage",
+ "rand 0.8.7",
  "sha2 0.10.9",
+ "tempfile",
  "thiserror 2.0.19",
  "zeroize",
 ]

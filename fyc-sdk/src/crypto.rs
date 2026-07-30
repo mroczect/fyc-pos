@@ -19,11 +19,6 @@ pub fn hash_token(token: &str) -> String {
 }
 
 pub fn hash_password(password: &str) -> Result<String, SdkError> {
-    if password.len() < 8 {
-        return Err(SdkError::InvalidInput(
-            "Password must be at least 8 characters".into(),
-        ));
-    }
     let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
     let hash = argon2
@@ -41,54 +36,38 @@ pub fn verify_password(password: &str, hash: &str) -> Result<bool, SdkError> {
         .is_ok())
 }
 
-/// Generate a new age keypair (X25519). Returns (public_key, private_key).
 pub fn generate_age_keypair() -> Result<(String, Zeroizing<String>), SdkError> {
     let response = librage::generate_keypair();
     if !response.success {
-        let msg = response
-            .error
-            .map(|e| e.message)
-            .unwrap_or_else(|| "Unknown error".to_string());
+        let msg = response.error.map(|e| e.message).unwrap_or_default();
         return Err(SdkError::Crypto(format!("Key generation failed: {msg}")));
     }
     let data = response.data.unwrap();
     Ok((data.public_key, data.secret_key))
 }
 
-/// Encrypt a private key with a passphrase (age passphrase).
-/// Returns hex-encoded ciphertext (armored=false).
 pub fn encrypt_private_key_with_password(
     private_key: &str,
     password: &str,
 ) -> Result<String, SdkError> {
     let response = librage::encrypt_with_passphrase(private_key.as_bytes(), password);
     if !response.success {
-        let msg = response
-            .error
-            .map(|e| e.message)
-            .unwrap_or_else(|| "Unknown error".to_string());
+        let msg = response.error.map(|e| e.message).unwrap_or_default();
         return Err(SdkError::Crypto(format!("Encryption failed: {msg}")));
     }
-    let encrypted = response.data.unwrap();
-    Ok(encrypted.as_string()) // hex-encoded
+    Ok(response.data.unwrap().as_string())
 }
 
-/// Decrypt a private key (hex-encoded ciphertext) with a password.
 pub fn decrypt_private_key_with_password(
     encrypted_key: &str,
     password: &str,
 ) -> Result<Zeroizing<String>, SdkError> {
-    // Decode hex string back to raw bytes
     let cipher_bytes = hex::decode(encrypted_key)
         .map_err(|e| SdkError::Crypto(format!("Invalid hex ciphertext: {e}")))?;
     let response = librage::decrypt_with_passphrase(&cipher_bytes, password);
     if !response.success {
-        let msg = response
-            .error
-            .map(|e| e.message)
-            .unwrap_or_else(|| "Unknown error".to_string());
+        let msg = response.error.map(|e| e.message).unwrap_or_default();
         return Err(SdkError::Crypto(format!("Decryption failed: {msg}")));
     }
-    let decrypted = response.data.unwrap();
-    Ok(Zeroizing::new(decrypted.as_string()))
+    Ok(Zeroizing::new(response.data.unwrap().as_string()))
 }

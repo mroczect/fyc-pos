@@ -13,3 +13,12 @@ thiserror = "2"
 zeroize = { version = "1", features = ["derive"] }
 hex = "0.4"
 chrono = { version = "0.4", features = ["serde"] }
+
+[dev-dependencies]
+tempfile = "3"
+criterion = "0.5"
+rand = "0.8"
+
+[[bench]]
+name = "benchmarks"
+harness = false

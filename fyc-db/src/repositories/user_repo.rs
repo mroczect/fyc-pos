@@ -137,4 +137,11 @@ impl UserRepo {
             updated_at: row.get(7)?,
         })
     }
+    pub fn has_role(&self, user_id: i64, role_name: &str) -> Result<bool, DbError> {
+        let conn = self.pool.get()?;
+        let mut stmt = conn.prepare(
+            "SELECT 1 FROM user_roles ur JOIN roles r ON ur.role_id = r.id WHERE ur.user_id = ?1 AND r.name = ?2"
+        )?;
+        Ok(stmt.exists(params![user_id, role_name])?)
+    }
 }

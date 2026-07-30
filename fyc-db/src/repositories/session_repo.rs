@@ -74,4 +74,10 @@ impl SessionRepo {
         )?;
         Ok(deleted)
     }
+
+    pub fn delete_all_for_user(&self, user_id: i64) -> Result<usize, DbError> {
+        let conn = self.pool.get()?;
+        let deleted = conn.execute("DELETE FROM sessions WHERE user_id = ?1", params![user_id])?;
+        Ok(deleted)
+    }
 }

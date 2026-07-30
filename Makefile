@@ -1,4 +1,4 @@
-.PHONY: all build release check test lint fmt clippy clean run install ci
+.PHONY: all build release check test test-verbose bench fmt fmt-check clippy lint clean run install uninstall ci ci-full snap
 
 all: build
 
@@ -17,6 +17,9 @@ test:
 test-verbose:
 	cargo test --workspace -- --nocapture
 
+bench:
+	cargo bench --workspace
+
 fmt:
 	cargo fmt --all
 
@@ -24,7 +27,7 @@ fmt-check:
 	cargo fmt --all -- --check
 
 clippy:
-	cargo clippy -- -D warnings
+	cargo clippy --workspace -- -D warnings
 
 lint: fmt clippy
 
@@ -32,18 +35,17 @@ clean:
 	cargo clean
 
 run:
-	cargo run
+	cargo run -p fyc-pos
 
 install:
-	cargo install --path .
+	cargo install --path fyc-pos
 
 uninstall:
-	cargo uninstall jsscli
+	cargo uninstall fyc-pos
 
 ci: fmt-check clippy test
 
-rebuild:
-	make release && make install
+ci-full: fmt-check clippy test bench
 
 snap:
-	snapcat tests -f markdown -o dev/tests.snapcat.md && snapcat src -f markdown -o dev/src.snapcat.md
+	snapcat src -f markdown -o dev/src.snapcat.md && snapcat tests -f markdown -o dev/tests.snapcat.md
