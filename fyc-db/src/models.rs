@@ -56,3 +56,47 @@ pub struct AuditLog {
     pub details: Option<String>,
     pub created_at: String,
 }
+
+#[derive(Debug, Clone)]
+pub struct Product {
+    pub id: i64,
+    pub name: String,
+    pub price: f64,
+    pub category: String,
+    pub is_active: bool,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct ProductCustomField {
+    pub id: i64,
+    pub name: String,
+    pub field_type: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct ProductCustomValue {
+    pub id: i64,
+    pub product_id: i64,
+    pub field_id: i64,
+    pub value: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct Order {
+    pub id: i64,
+    pub user_id: i64,
+    pub status: String,
+    pub total: f64,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct OrderItem {
+    pub id: i64,
+    pub order_id: i64,
+    pub product_id: i64,
+    pub quantity: i32,
+    pub unit_price: f64,
+}
