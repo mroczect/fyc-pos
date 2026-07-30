@@ -2,51 +2,55 @@ name: CI
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [master]
   pull_request:
-    branches: [ "master" ]
+    branches: [master]
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build-and-test:
-    name: Build, lint, and test (Rust ${{ matrix.rust }})
+  lint-and-test:
+    name: Lint & Test (Rust ${{ matrix.rust }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [stable, beta]  # uji di stable dan beta untuk tangkap regresi dini
-
+        rust: [stable, beta]
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ matrix.rust }}
           components: rustfmt, clippy
-
-      - name: Cache Cargo artifacts
-        uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
-
-      - name: Ensure Makefile targets work
-        run: |
-          make check
-          make fmt-check
-          make clippy
-          make test
+      - name: Check formatting
+        run: make fmt-check
+      - name: Run Clippy
+        run: make clippy
+      - name: Run tests
+        run: make test
 
   security-audit:
-    name: Security audit (cargo-audit)
+    name: Security Audit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - name: Install cargo-audit
         run: cargo install cargo-audit --locked
-      - name: Run security audit
+      - name: Run audit
         run: cargo audit --deny warnings
-        # Mengubah semua advisory menjadi error, sangat ketat
+
+  benches:
+    name: Benchmarks (informational)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run benchmarks (fyc-sdk only)
+        run: cargo bench -p fyc-sdk -- --sample-size 10
