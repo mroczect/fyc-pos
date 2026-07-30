@@ -17,6 +17,7 @@ impl ProductCustomRepo {
         let conn = self.pool.get()?;
         Self::insert_field(&conn, name, field_type)
     }
+
     pub fn create_field_with_conn(
         &self,
         conn: &rusqlite::Connection,
@@ -25,6 +26,7 @@ impl ProductCustomRepo {
     ) -> Result<i64, DbError> {
         Self::insert_field(conn, name, field_type)
     }
+
     fn insert_field(
         conn: &rusqlite::Connection,
         name: &str,
@@ -49,12 +51,14 @@ impl ProductCustomRepo {
         let conn = self.pool.get()?;
         Self::query_field_by_name(&conn, name)
     }
+
     pub fn get_field_by_name_with_conn(
         conn: &rusqlite::Connection,
         name: &str,
     ) -> Result<Option<ProductCustomField>, DbError> {
         Self::query_field_by_name(conn, name)
     }
+
     fn query_field_by_name(
         conn: &rusqlite::Connection,
         name: &str,
@@ -78,6 +82,7 @@ impl ProductCustomRepo {
         let conn = self.pool.get()?;
         Self::set_value_with_conn(&conn, product_id, field_id, value)
     }
+
     pub fn set_value_with_conn(
         conn: &rusqlite::Connection,
         product_id: i64,
@@ -85,7 +90,8 @@ impl ProductCustomRepo {
         value: &str,
     ) -> Result<(), DbError> {
         conn.execute(
-            "INSERT OR REPLACE INTO product_custom_values (product_id, field_id, value) VALUES (?1, ?2, ?3)",
+            "INSERT INTO product_custom_values (product_id, field_id, value) VALUES (?1, ?2, ?3)
+             ON CONFLICT(product_id, field_id) DO UPDATE SET value = excluded.value",
             params![product_id, field_id, value],
         )?;
         Ok(())
@@ -98,12 +104,16 @@ impl ProductCustomRepo {
         let conn = self.pool.get()?;
         Self::query_values_for_product(&conn, product_id)
     }
+
     fn query_values_for_product(
         conn: &rusqlite::Connection,
         product_id: i64,
     ) -> Result<Vec<(ProductCustomField, String)>, DbError> {
         let mut stmt = conn.prepare(
-            "SELECT f.id, f.name, f.field_type, v.value FROM product_custom_fields f JOIN product_custom_values v ON f.id = v.field_id WHERE v.product_id = ?1"
+            "SELECT f.id, f.name, f.field_type, v.value
+             FROM product_custom_fields f
+             JOIN product_custom_values v ON f.id = v.field_id
+             WHERE v.product_id = ?1",
         )?;
         let rows = stmt.query_map(params![product_id], |row| {
             Ok((

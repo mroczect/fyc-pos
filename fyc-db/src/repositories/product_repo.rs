@@ -17,8 +17,8 @@ impl ProductRepo {
         let conn = self.pool.get()?;
         Self::insert(&conn, name, price, category)
     }
+
     pub fn create_with_conn(
-        &self,
         conn: &rusqlite::Connection,
         name: &str,
         price: f64,
@@ -57,16 +57,18 @@ impl ProductRepo {
         let conn = self.pool.get()?;
         Self::query_by_id(&conn, id)
     }
+
     pub fn find_by_id_with_conn(
-        &self,
-        _conn: &rusqlite::Connection,
+        conn: &rusqlite::Connection,
         id: i64,
     ) -> Result<Option<Product>, DbError> {
-        Self::query_by_id(_conn, id)
+        Self::query_by_id(conn, id)
     }
+
     fn query_by_id(conn: &rusqlite::Connection, id: i64) -> Result<Option<Product>, DbError> {
         let mut stmt = conn.prepare(
-            "SELECT id, name, price, category, is_active, created_at, updated_at FROM products WHERE id = ?1 AND is_active = 1"
+            "SELECT id, name, price, category, is_active, created_at, updated_at
+             FROM products WHERE id = ?1 AND is_active = 1",
         )?;
         let mut rows = stmt.query_map(params![id], Self::row_to_product)?;
         match rows.next() {
@@ -79,9 +81,11 @@ impl ProductRepo {
         let conn = self.pool.get()?;
         Self::query_all_active(&conn)
     }
+
     fn query_all_active(conn: &rusqlite::Connection) -> Result<Vec<Product>, DbError> {
         let mut stmt = conn.prepare(
-            "SELECT id, name, price, category, is_active, created_at, updated_at FROM products WHERE is_active = 1 ORDER BY name"
+            "SELECT id, name, price, category, is_active, created_at, updated_at
+             FROM products WHERE is_active = 1 ORDER BY name",
         )?;
         let rows = stmt.query_map([], Self::row_to_product)?;
         let mut products = Vec::new();
@@ -93,10 +97,10 @@ impl ProductRepo {
 
     pub fn update(&self, id: i64, name: &str, price: f64, category: &str) -> Result<(), DbError> {
         let conn = self.pool.get()?;
-        self.update_with_conn(&conn, id, name, price, category)
+        Self::update_with_conn(&conn, id, name, price, category)
     }
+
     pub fn update_with_conn(
-        &self,
         conn: &rusqlite::Connection,
         id: i64,
         name: &str,
@@ -110,7 +114,8 @@ impl ProductRepo {
             return Err(DbError::InvalidInput("Price cannot be negative".into()));
         }
         let affected = conn.execute(
-            "UPDATE products SET name = ?1, price = ?2, category = ?3, updated_at = datetime('now') WHERE id = ?4 AND is_active = 1",
+            "UPDATE products SET name = ?1, price = ?2, category = ?3, updated_at = datetime('now')
+             WHERE id = ?4 AND is_active = 1",
             params![name.trim(), price, category.trim(), id],
         )?;
         if affected == 0 {
@@ -122,13 +127,10 @@ impl ProductRepo {
 
     pub fn deactivate(&self, id: i64) -> Result<(), DbError> {
         let conn = self.pool.get()?;
-        self.deactivate_with_conn(&conn, id)
+        Self::deactivate_with_conn(&conn, id)
     }
-    pub fn deactivate_with_conn(
-        &self,
-        conn: &rusqlite::Connection,
-        id: i64,
-    ) -> Result<(), DbError> {
+
+    pub fn deactivate_with_conn(conn: &rusqlite::Connection, id: i64) -> Result<(), DbError> {
         let affected = conn.execute(
             "UPDATE products SET is_active = 0, updated_at = datetime('now') WHERE id = ?1",
             params![id],

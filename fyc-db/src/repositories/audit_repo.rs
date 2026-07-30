@@ -19,10 +19,20 @@ impl AuditRepo {
         target_user_id: Option<i64>,
         details: Option<&str>,
     ) -> Result<(), DbError> {
+        let conn = self.pool.get()?;
+        Self::log_with_conn(&conn, admin_id, action, target_user_id, details)
+    }
+
+    pub fn log_with_conn(
+        conn: &rusqlite::Connection,
+        admin_id: i64,
+        action: &str,
+        target_user_id: Option<i64>,
+        details: Option<&str>,
+    ) -> Result<(), DbError> {
         if action.trim().is_empty() {
             return Err(DbError::InvalidInput("Action cannot be empty".into()));
         }
-        let conn = self.pool.get()?;
         match conn.execute(
             "INSERT INTO audit_log (admin_id, action, target_user_id, details) VALUES (?1, ?2, ?3, ?4)",
             params![admin_id, action.trim(), target_user_id, details],
