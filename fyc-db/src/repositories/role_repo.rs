@@ -101,24 +101,26 @@ impl RoleRepo {
         Ok(roles)
     }
 
-    pub fn has_role(&self, user_id: i64, role_name: &str) -> Result<bool, DbError> {
-        let conn = self.pool.get()?;
-        let mut stmt = conn.prepare(
-            "SELECT 1 FROM user_roles ur JOIN roles r ON ur.role_id = r.id WHERE ur.user_id = ?1 AND r.name = ?2"
-        )?;
-        Ok(stmt.exists(params![user_id, role_name])?)
-    }
     pub fn assign_permission_to_role(
         &self,
         role_id: i64,
         permission_id: i64,
     ) -> Result<(), DbError> {
         let conn = self.pool.get()?;
-        conn.execute(
-            "INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (?1, ?2)",
+        match conn.execute(
+            "INSERT INTO role_permissions (role_id, permission_id) VALUES (?1, ?2)",
             params![role_id, permission_id],
-        )?;
-        Ok(())
+        ) {
+            Ok(_) => Ok(()),
+            Err(rusqlite::Error::SqliteFailure(err, _))
+                if err.code == ErrorCode::ConstraintViolation =>
+            {
+                Err(DbError::DuplicateEntry(
+                    "Permission already assigned or role/permission does not exist".into(),
+                ))
+            }
+            Err(e) => Err(DbError::QueryError(e)),
+        }
     }
 
     pub fn remove_permission_from_role(
@@ -132,5 +134,12 @@ impl RoleRepo {
             params![role_id, permission_id],
         )?;
         Ok(())
+    }
+    pub fn has_role(&self, user_id: i64, role_name: &str) -> Result<bool, DbError> {
+        let conn = self.pool.get()?;
+        let mut stmt = conn.prepare(
+            "SELECT 1 FROM user_roles ur JOIN roles r ON ur.role_id = r.id WHERE ur.user_id = ?1 AND r.name = ?2"
+        )?;
+        Ok(stmt.exists(params![user_id, role_name])?)
     }
 }
