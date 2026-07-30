@@ -4,10 +4,8 @@ use r2d2_sqlite::SqliteConnectionManager;
 use std::path::Path;
 
 pub fn create_pool<P: AsRef<Path>>(db_path: P) -> Result<Pool<SqliteConnectionManager>, DbError> {
-    let manager = SqliteConnectionManager::file(db_path).with_init(|conn| {
-        conn.execute_batch("PRAGMA foreign_keys = ON;")
-            .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))
-    });
+    let manager = SqliteConnectionManager::file(db_path)
+        .with_init(|conn| conn.execute_batch("PRAGMA foreign_keys = ON;"));
     let pool = Pool::builder()
         .max_size(4)
         .build(manager)
@@ -52,7 +50,6 @@ pub fn run_migrations(conn: &rusqlite::Connection) -> Result<(), DbError> {
         );
         CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
 
-        -- Permission & Audit tables
         CREATE TABLE IF NOT EXISTS permissions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE COLLATE NOCASE,
