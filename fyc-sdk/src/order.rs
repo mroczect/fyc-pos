@@ -1,8 +1,8 @@
 use crate::auth::AuthService;
 use crate::error::SdkError;
 use crate::permission::PermissionService;
-use fyc_db::DbPool;
 use fyc_db::repositories::{AuditRepo, OrderRepo, ProductRepo};
+use fyc_db::{DbError, DbPool, Order, OrderItem};
 
 pub struct OrderService {
     pool: DbPool,
@@ -25,25 +25,37 @@ impl OrderService {
         }
     }
 
-    pub fn create_order(&self, token: &str, items: &[(i64, i32)]) -> Result<i64, SdkError> {
+    fn check_permission(&self, token: &str, permission: &str) -> Result<i64, SdkError> {
         let user_id = self.auth.validate_token(token)?;
-        if !self.permission.has_permission(user_id, "order:create")? {
-            return Err(SdkError::AuthFailed(
-                "Missing permission: order:create".into(),
-            ));
+        if !self.permission.has_permission(user_id, permission)? {
+            return Err(SdkError::AuthFailed(format!(
+                "Missing permission: {}",
+                permission
+            )));
         }
+        Ok(user_id)
+    }
 
-        let conn = self.pool.get().map_err(fyc_db::DbError::from)?;
-        conn.execute("BEGIN", []).map_err(fyc_db::DbError::from)?;
+    pub fn create_order(&self, token: &str, items: &[(i64, i32)]) -> Result<i64, SdkError> {
+        let user_id = self.check_permission(token, "order:create")?;
+
+        let conn = self.pool.get().map_err(DbError::from)?;
+        conn.execute("BEGIN", []).map_err(DbError::from)?;
 
         let mut total = 0.0;
         let mut order_items = Vec::new();
 
         for &(product_id, quantity) in items {
-            let product = self
-                .product_repo
-                .find_by_id_with_conn(&conn, product_id)?
-                .ok_or_else(|| SdkError::NotFound(format!("Product {} not found", product_id)))?;
+            let product = ProductRepo::find_by_id_with_conn(&conn, product_id)
+                .map_err(|e| {
+                    let _ = conn.execute("ROLLBACK", []);
+                    e
+                })?
+                .ok_or_else(|| {
+                    let _ = conn.execute("ROLLBACK", []);
+                    SdkError::NotFound(format!("Product {} not found", product_id))
+                })?;
+
             let item_total = product.price * quantity as f64;
             total += item_total;
             order_items.push((product_id, quantity, product.price));
@@ -51,32 +63,48 @@ impl OrderService {
 
         let order_id = self
             .order_repo
-            .create_order_with_conn(&conn, user_id, "paid", total)?;
-        for (product_id, quantity, unit_price) in order_items {
-            OrderRepo::add_order_item_with_conn(&conn, order_id, product_id, quantity, unit_price)?;
+            .create_order_with_conn(&conn, user_id, "paid", total)
+            .map_err(|e| {
+                let _ = conn.execute("ROLLBACK", []);
+                e
+            })?;
+
+        for (product_id, quantity, unit_price) in &order_items {
+            OrderRepo::add_order_item_with_conn(
+                &conn,
+                order_id,
+                *product_id,
+                *quantity,
+                *unit_price,
+            )
+            .map_err(|e| {
+                let _ = conn.execute("ROLLBACK", []);
+                e
+            })?;
         }
 
-        conn.execute("COMMIT", []).map_err(|e| {
-            let _ = conn.execute("ROLLBACK", []);
-            fyc_db::DbError::from(e)
-        })?;
-
-        self.audit_repo.log(
+        AuditRepo::log_with_conn(
+            &conn,
             user_id,
             "order:create",
             Some(order_id),
             Some(&format!("total: {}", total)),
-        )?;
+        )
+        .map_err(|e| {
+            let _ = conn.execute("ROLLBACK", []);
+            e
+        })?;
+
+        conn.execute("COMMIT", []).map_err(|e| {
+            let _ = conn.execute("ROLLBACK", []);
+            DbError::from(e)
+        })?;
+
         Ok(order_id)
     }
 
-    pub fn get_today_orders(&self, token: &str) -> Result<Vec<fyc_db::Order>, SdkError> {
-        let user_id = self.auth.validate_token(token)?;
-        if !self.permission.has_permission(user_id, "order:view")? {
-            return Err(SdkError::AuthFailed(
-                "Missing permission: order:view".into(),
-            ));
-        }
+    pub fn get_today_orders(&self, token: &str) -> Result<Vec<Order>, SdkError> {
+        let _ = self.check_permission(token, "order:view")?;
         Ok(self.order_repo.get_orders_today()?)
     }
 
@@ -84,13 +112,8 @@ impl OrderService {
         &self,
         token: &str,
         order_id: i64,
-    ) -> Result<(fyc_db::Order, Vec<fyc_db::OrderItem>), SdkError> {
-        let user_id = self.auth.validate_token(token)?;
-        if !self.permission.has_permission(user_id, "order:view")? {
-            return Err(SdkError::AuthFailed(
-                "Missing permission: order:view".into(),
-            ));
-        }
+    ) -> Result<(Order, Vec<OrderItem>), SdkError> {
+        let _ = self.check_permission(token, "order:view")?;
         let order = self
             .order_repo
             .find_order_by_id(order_id)?
