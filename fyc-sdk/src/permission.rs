@@ -1,6 +1,6 @@
 use crate::error::SdkError;
 use fyc_db::DbPool;
-use fyc_db::repositories::PermissionRepo;
+use fyc_db::sqlite::PermissionRepo;
 
 pub struct PermissionService {
     repo: PermissionRepo,

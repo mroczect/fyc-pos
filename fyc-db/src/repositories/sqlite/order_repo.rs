@@ -20,6 +20,7 @@ impl OrderRepo {
         status: &str,
         total: f64,
     ) -> Result<i64, DbError> {
+        Self::validate_status(status)?;
         Self::insert_order(conn, user_id, status, total)
     }
 
@@ -32,6 +33,13 @@ impl OrderRepo {
     ) -> Result<i64, DbError> {
         validation::validate_quantity(quantity)?;
         Self::insert_order_item(conn, order_id, product_id, quantity, unit_price)
+    }
+
+    fn validate_status(status: &str) -> Result<(), DbError> {
+        if !["pending", "paid", "cancelled"].contains(&status) {
+            return Err(DbError::InvalidInput("Invalid order status".into()));
+        }
+        Ok(())
     }
 
     pub fn insert_order(
@@ -163,6 +171,7 @@ impl OrderRepo {
 
 impl OrderRepository for OrderRepo {
     fn create_order(&self, user_id: i64, status: &str, total: f64) -> Result<i64, DbError> {
+        Self::validate_status(status)?;
         let conn = self.pool.get()?;
         Self::insert_order(&conn, user_id, status, total)
     }

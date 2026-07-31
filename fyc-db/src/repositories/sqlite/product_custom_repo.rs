@@ -32,12 +32,26 @@ impl ProductCustomRepo {
         field_id: i64,
         value: &str,
     ) -> Result<(), DbError> {
-        conn.execute(
+        if value.len() > 500 {
+            return Err(DbError::InvalidInput(
+                "Custom value too long (max 500)".into(),
+            ));
+        }
+        match conn.execute(
             "INSERT INTO product_custom_values (product_id, field_id, value) VALUES (?1, ?2, ?3)
              ON CONFLICT(product_id, field_id) DO UPDATE SET value = excluded.value",
             params![product_id, field_id, value],
-        )?;
-        Ok(())
+        ) {
+            Ok(_) => Ok(()),
+            Err(rusqlite::Error::SqliteFailure(err, _))
+                if err.code == ErrorCode::ConstraintViolation =>
+            {
+                Err(DbError::ForeignKeyViolation(
+                    "Product or field does not exist".into(),
+                ))
+            }
+            Err(e) => Err(DbError::QueryError(e)),
+        }
     }
 
     pub fn insert_field(
