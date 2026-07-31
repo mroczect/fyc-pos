@@ -1,5 +1,5 @@
 [package]
-name = "libfycaccount"
+name = "lib_fyc_token"
 version.workspace = true
 authors.workspace = true
 license.workspace = true

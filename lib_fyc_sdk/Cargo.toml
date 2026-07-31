@@ -1,5 +1,5 @@
 [package]
-name = "libfycsdk"
+name = "lib_fyc_sdk"
 version.workspace = true
 authors.workspace = true
 license.workspace = true

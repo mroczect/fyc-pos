@@ -1,5 +1,5 @@
 [package]
-name = "libfyctoken"
+name = "lib_fyc_role"
 version.workspace = true
 authors.workspace = true
 license.workspace = true
