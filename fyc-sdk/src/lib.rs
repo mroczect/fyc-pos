@@ -12,7 +12,7 @@ pub use menu::MenuService;
 pub use order::OrderService;
 pub use report::ReportService;
 
-use fyc_db::repositories::{PermissionRepo, ProductCustomRepo, RoleRepo};
+use fyc_db::sqlite::{PermissionRepo, ProductCustomRepo, RoleRepo};
 use fyc_db::{DbError, DbPool};
 
 pub fn seed_defaults(pool: &DbPool) -> Result<(), SdkError> {
