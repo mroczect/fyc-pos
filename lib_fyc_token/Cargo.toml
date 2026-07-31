@@ -15,3 +15,4 @@ base64 = "0.23"
 zeroize = { version = "1", features = ["derive"] }
 thiserror = "2"
 tracing = "0.1"
+constant_time_eq = "0.3" 
