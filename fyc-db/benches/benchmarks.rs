@@ -1,10 +1,9 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use fyc_db::connection::create_pool;
-use fyc_db::repositories::{OrderRepo, ProductRepo, RoleRepo, SessionRepo, UserRepo};
+use fyc_db::sqlite::{OrderRepo, ProductRepo, RoleRepo, SessionRepo, UserRepo};
 use std::sync::atomic::{AtomicU64, Ordering};
 use tempfile::TempDir;
 
-// ---------------- existing benchmarks ----------------
 fn bench_user_creation(c: &mut Criterion) {
     let dir = TempDir::new().unwrap();
     let pool = create_pool(dir.path().join("bench.db")).unwrap();
