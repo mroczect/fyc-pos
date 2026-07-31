@@ -1,5 +1,8 @@
 use zeroize::ZeroizeOnDrop;
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 #[derive(Clone, ZeroizeOnDrop)]
 pub struct User {
     pub id: i64,
@@ -27,6 +30,7 @@ impl std::fmt::Debug for User {
     }
 }
 
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone)]
 pub struct Role {
     pub id: i64,
@@ -34,6 +38,7 @@ pub struct Role {
     pub description: String,
 }
 
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone)]
 pub struct UserRole {
     pub user_id: i64,
@@ -61,6 +66,7 @@ impl std::fmt::Debug for Session {
     }
 }
 
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone)]
 pub struct Permission {
     pub id: i64,
@@ -68,12 +74,14 @@ pub struct Permission {
     pub description: String,
 }
 
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone)]
 pub struct RolePermission {
     pub role_id: i64,
     pub permission_id: i64,
 }
 
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone)]
 pub struct AuditLog {
     pub id: i64,
@@ -84,6 +92,7 @@ pub struct AuditLog {
     pub created_at: String,
 }
 
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone)]
 pub struct Product {
     pub id: i64,
@@ -95,6 +104,7 @@ pub struct Product {
     pub updated_at: String,
 }
 
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone)]
 pub struct ProductCustomField {
     pub id: i64,
@@ -102,6 +112,7 @@ pub struct ProductCustomField {
     pub field_type: String,
 }
 
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone)]
 pub struct ProductCustomValue {
     pub id: i64,
@@ -110,6 +121,7 @@ pub struct ProductCustomValue {
     pub value: String,
 }
 
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone)]
 pub struct Order {
     pub id: i64,
@@ -119,6 +131,7 @@ pub struct Order {
     pub created_at: String,
 }
 
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone)]
 pub struct OrderItem {
     pub id: i64,

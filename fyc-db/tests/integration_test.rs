@@ -217,10 +217,10 @@ fn test_session_duplicate_token_hash() {
         .create_user("dupsession", "hash", "pk", "ek")
         .unwrap();
     session_repo
-        .create_session(user_id, "samehash", "2099-01-01")
+        .create_session(user_id, "samehash", "2099-01-01 00:00:00")
         .unwrap();
     let err = session_repo
-        .create_session(user_id, "samehash", "2099-01-01")
+        .create_session(user_id, "samehash", "2099-01-01 00:00:00")
         .unwrap_err();
     assert!(matches!(err, DbError::DuplicateEntry(_)));
 }
@@ -320,7 +320,7 @@ fn test_cascade_delete_user() {
     let role_id = role_repo.create_role("cascade_role", "Test").unwrap();
     role_repo.assign_role_to_user(user_id, role_id).unwrap();
     session_repo
-        .create_session(user_id, "cascade_token", "2099-01-01")
+        .create_session(user_id, "cascade_token", "2099-01-01 00:00:00")
         .unwrap();
     let conn = pool.get().unwrap();
     conn.execute(

@@ -33,6 +33,11 @@ impl PermissionRepository for PermissionRepo {
                 "Permission name cannot be empty".into(),
             ));
         }
+        if name.len() > 100 {
+            return Err(DbError::InvalidInput(
+                "Permission name too long (max 100)".into(),
+            ));
+        }
         let conn = self.pool.get()?;
         match conn.execute(
             "INSERT INTO permissions (name, description) VALUES (?1, ?2)",

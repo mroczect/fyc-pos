@@ -2,6 +2,7 @@ use crate::DbPool;
 use crate::error::DbError;
 use crate::models::Session;
 use crate::repositories::traits::SessionRepository;
+use regex::Regex;
 use rusqlite::{ErrorCode, params};
 
 pub struct SessionRepo {
@@ -13,12 +14,23 @@ impl SessionRepo {
         Self { pool }
     }
 
+    fn validate_expires_format(expires: &str) -> Result<(), DbError> {
+        let re = Regex::new(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$").unwrap();
+        if !re.is_match(expires) {
+            return Err(DbError::InvalidInput(
+                "expires_at must be YYYY-MM-DD HH:MM:SS".into(),
+            ));
+        }
+        Ok(())
+    }
+
     pub fn create_session(
         &self,
         user_id: i64,
         token_hash: &str,
         expires_at: &str,
     ) -> Result<i64, DbError> {
+        Self::validate_expires_format(expires_at)?;
         <Self as SessionRepository>::create_session(self, user_id, token_hash, expires_at)
     }
 
@@ -46,6 +58,7 @@ impl SessionRepository for SessionRepo {
         token_hash: &str,
         expires_at: &str,
     ) -> Result<i64, DbError> {
+        Self::validate_expires_format(expires_at)?;
         let conn = self.pool.get()?;
         match conn.execute(
             "INSERT INTO sessions (user_id, token_hash, expires_at) VALUES (?1, ?2, ?3)",

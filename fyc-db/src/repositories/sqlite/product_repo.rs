@@ -70,6 +70,9 @@ impl ProductRepo {
         price: f64,
         category: &str,
     ) -> Result<i64, DbError> {
+        if category.len() > 100 {
+            return Err(DbError::InvalidInput("Category too long (max 100)".into()));
+        }
         match conn.execute(
             "INSERT INTO products (name, price, category) VALUES (?1, ?2, ?3)",
             params![name.trim(), price, category.trim()],
