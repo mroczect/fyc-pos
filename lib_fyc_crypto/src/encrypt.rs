@@ -8,10 +8,14 @@ pub fn encrypt_with_passphrase(
     passphrase: &str,
 ) -> Result<EncryptOutput, CryptoError> {
     let res = librage::encrypt_with_passphrase(plaintext, passphrase);
-    if res.success {
-        Ok(EncryptOutput::new(res.data.unwrap().ciphertext.to_vec()))
+    if let Some(data) = res.data {
+        Ok(EncryptOutput::new(data.ciphertext.to_vec()))
     } else {
-        Err(CryptoError::EncryptionFailed(res.error.unwrap().message))
+        let msg = res
+            .error
+            .map(|e| e.message)
+            .unwrap_or_else(|| "unknown error".to_string());
+        Err(CryptoError::EncryptionFailed(msg))
     }
 }
 
@@ -21,9 +25,13 @@ pub fn encrypt_with_x25519(
     public_key: &str,
 ) -> Result<EncryptOutput, CryptoError> {
     let res = librage::encrypt(plaintext, public_key);
-    if res.success {
-        Ok(EncryptOutput::new(res.data.unwrap().ciphertext.to_vec()))
+    if let Some(data) = res.data {
+        Ok(EncryptOutput::new(data.ciphertext.to_vec()))
     } else {
-        Err(CryptoError::EncryptionFailed(res.error.unwrap().message))
+        let msg = res
+            .error
+            .map(|e| e.message)
+            .unwrap_or_else(|| "unknown error".to_string());
+        Err(CryptoError::EncryptionFailed(msg))
     }
 }
