@@ -1,0 +1,13 @@
+[package]
+name = "lib_fyc_crypto"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+repository.workspace = true
+
+[dependencies]
+librage = { git = "https://github.com/mroczect/librage.git" }
+zeroize = { version = "1", features = ["derive"] }
+thiserror = "2"
+tracing = "0.1"
