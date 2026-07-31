@@ -30,3 +30,5 @@ target
 .velodiff_dist.diff
 .snapcat.md
 /dev
+
+*.db
