@@ -8,10 +8,21 @@ use argon2::{
 use error::AccountError;
 use lib_fyc_role::types::Role;
 use lib_fyc_token::{TokenManager, types::TokenPayload};
+use once_cell::sync::Lazy;
 use tracing::instrument;
 use types::{Account, Credentials};
 use uuid::Uuid;
 use zeroize::Zeroizing;
+
+static ARGON2: Lazy<Argon2> = Lazy::new(|| {
+    Argon2::new(
+        Algorithm::Argon2id,
+        Version::V0x13,
+        Params::new(19_456, 2, 1, Some(32)).expect("valid argon2 params"),
+    )
+});
+
+const MAX_TOKEN_EXPIRY_SECS: u64 = 3600;
 
 pub struct AccountManager {
     token_manager: TokenManager,
@@ -52,7 +63,7 @@ impl AccountManager {
     pub fn login(
         &self,
         credentials: &Credentials,
-        token_expiry_secs: u64,
+        requested_expiry: u64,
     ) -> Result<String, AccountError> {
         let account = self
             .accounts
@@ -60,18 +71,21 @@ impl AccountManager {
             .find(|a| a.username == credentials.username)
             .ok_or(AccountError::UserNotFound)?;
 
-        if !verify_password(&credentials.password, &account.password_hash)? {
+        let valid = verify_password(&credentials.password, &account.password_hash).unwrap_or(false);
+        if !valid {
             return Err(AccountError::InvalidCredentials);
         }
 
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
+            .map_err(|e| AccountError::Internal(format!("clock error: {}", e)))?
             .as_secs();
+
+        let token_expiry = std::cmp::min(requested_expiry, MAX_TOKEN_EXPIRY_SECS);
         let payload = TokenPayload {
             user_id: account.user_id.clone(),
             role: account.role,
-            exp: now + token_expiry_secs,
+            exp: now + token_expiry,
         };
 
         let token = self.token_manager.generate_token(&payload)?;
@@ -84,12 +98,17 @@ impl AccountManager {
         Ok(self.token_manager.validate_token(token)?)
     }
 
-    #[instrument(skip(self, new_password))]
+    #[instrument(skip(self, new_password, token))]
     pub fn change_password(
         &mut self,
         user_id: &str,
         new_password: Zeroizing<String>,
+        token: &str,
     ) -> Result<(), AccountError> {
+        let payload = self.token_manager.validate_token(token)?;
+        if payload.user_id != user_id && payload.role != Role::Admin {
+            return Err(AccountError::PermissionDenied);
+        }
         let account = self
             .accounts
             .iter_mut()
@@ -100,17 +119,17 @@ impl AccountManager {
         tracing::info!("Password changed for user {}", account.username);
         Ok(())
     }
+
+    #[instrument(skip(self))]
+    pub fn revoke_token(&mut self, token: &str) -> Result<(), AccountError> {
+        self.token_manager.revoke_token(token);
+        Ok(())
+    }
 }
 
 fn hash_password(password: &str) -> Result<String, AccountError> {
     let salt = SaltString::generate(&mut rand::thread_rng());
-    let argon2 = Argon2::new(
-        Algorithm::Argon2id,
-        Version::V0x13,
-        Params::new(19_456, 2, 1, Some(32))
-            .map_err(|e| AccountError::PasswordHash(e.to_string()))?,
-    );
-    let hash = argon2
+    let hash = ARGON2
         .hash_password(password.as_bytes(), &salt)
         .map_err(|e| AccountError::PasswordHash(e.to_string()))?
         .to_string();
@@ -119,11 +138,5 @@ fn hash_password(password: &str) -> Result<String, AccountError> {
 
 fn verify_password(password: &str, hash: &str) -> Result<bool, AccountError> {
     let parsed = PasswordHash::new(hash).map_err(|e| AccountError::PasswordHash(e.to_string()))?;
-    let argon2 = Argon2::new(
-        Algorithm::Argon2id,
-        Version::V0x13,
-        Params::new(19_456, 2, 1, Some(32))
-            .map_err(|e| AccountError::PasswordHash(e.to_string()))?,
-    );
-    Ok(argon2.verify_password(password.as_bytes(), &parsed).is_ok())
+    Ok(ARGON2.verify_password(password.as_bytes(), &parsed).is_ok())
 }
