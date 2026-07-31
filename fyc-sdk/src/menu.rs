@@ -1,7 +1,7 @@
 use crate::auth::AuthService;
 use crate::error::SdkError;
 use crate::permission::PermissionService;
-use fyc_db::repositories::{AuditRepo, ProductCustomRepo, ProductRepo};
+use fyc_db::sqlite::{AuditRepo, ProductCustomRepo, ProductRepo};
 use fyc_db::{DbError, DbPool, Product, ProductCustomField};
 
 pub struct MenuService {
@@ -150,10 +150,7 @@ impl MenuService {
         let conn = self.pool.get().map_err(DbError::from)?;
         conn.execute("BEGIN", []).map_err(DbError::from)?;
 
-        let id = match self
-            .custom_repo
-            .create_field_with_conn(&conn, name, field_type)
-        {
+        let id = match ProductCustomRepo::create_field_with_conn(&conn, name, field_type) {
             Ok(id) => id,
             Err(e) => {
                 let _ = conn.execute("ROLLBACK", []);
