@@ -1,0 +1,9 @@
+[package]
+name = "lib_fyc_token"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+repository.workspace = true
+
+[dependencies]
