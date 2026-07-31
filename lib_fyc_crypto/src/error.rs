@@ -10,10 +10,12 @@ pub enum CryptoError {
     KeyGenFailed(String),
     #[error("Invalid key: {0}")]
     InvalidKey(String),
+    #[error("Internal crypto error: {0}")]
+    Internal(String),
 }
 
 impl From<librage::LibrageError> for CryptoError {
     fn from(e: librage::LibrageError) -> Self {
-        CryptoError::EncryptionFailed(e.to_string())
+        CryptoError::Internal(e.to_string())
     }
 }
