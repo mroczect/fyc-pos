@@ -28,4 +28,10 @@ pub enum AccountError {
 
     #[error("Account already exists")]
     AlreadyExists,
+
+    #[error("Permission denied")]
+    PermissionDenied,
+
+    #[error("Internal error: {0}")]
+    Internal(String),
 }

@@ -2,18 +2,21 @@ pub mod error;
 pub mod types;
 
 use error::TokenError;
+use std::collections::HashSet;
 use tracing::instrument;
 use types::TokenPayload;
 use zeroize::Zeroizing;
 
 pub struct TokenManager {
     secret: Zeroizing<[u8; 32]>,
+    revoked: HashSet<[u8; 32]>,
 }
 
 impl TokenManager {
     pub fn new(secret: [u8; 32]) -> Self {
         Self {
             secret: Zeroizing::new(secret),
+            revoked: HashSet::new(),
         }
     }
 
@@ -38,6 +41,11 @@ impl TokenManager {
 
     #[instrument(skip(self))]
     pub fn validate_token(&self, token: &str) -> Result<TokenPayload, TokenError> {
+        let token_hash = blake3::hash(token.as_bytes());
+        if self.revoked.contains(token_hash.as_bytes()) {
+            return Err(TokenError::InvalidSignature);
+        }
+
         let parts: Vec<&str> = token.splitn(2, '.').collect();
         if parts.len() != 2 {
             return Err(TokenError::InvalidSignature);
@@ -59,10 +67,11 @@ impl TokenManager {
 
         let computed_hash = blake3::keyed_hash(&self.secret, &serialized);
         if constant_time_eq::constant_time_eq(computed_hash.as_bytes(), &expected_hash) {
-            let payload: TokenPayload = postcard::from_bytes(&serialized)?;
+            let payload: TokenPayload =
+                postcard::from_bytes(&serialized).map_err(|_| TokenError::InvalidSignature)?;
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
+                .map_err(|e| TokenError::Internal(format!("clock error: {}", e)))?
                 .as_secs();
             if payload.exp < now {
                 tracing::warn!("Token expired for user {}", payload.user_id);
@@ -75,17 +84,11 @@ impl TokenManager {
             Err(TokenError::InvalidSignature)
         }
     }
-}
 
-mod constant_time_eq {
-    pub fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
-        if a.len() != b.len() {
-            return false;
-        }
-        let mut result = 0u8;
-        for (x, y) in a.iter().zip(b.iter()) {
-            result |= x ^ y;
-        }
-        result == 0
+    #[instrument(skip(self))]
+    pub fn revoke_token(&mut self, token: &str) {
+        let token_hash = blake3::hash(token.as_bytes());
+        self.revoked.insert(*token_hash.as_bytes());
+        tracing::debug!("Token revoked");
     }
 }

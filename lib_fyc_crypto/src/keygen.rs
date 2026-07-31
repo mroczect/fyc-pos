@@ -5,10 +5,13 @@ use zeroize::Zeroizing;
 #[instrument]
 pub fn generate_keypair() -> Result<(Zeroizing<String>, String), CryptoError> {
     let res = librage::generate_keypair();
-    if res.success {
-        let data = res.data.unwrap();
+    if let Some(data) = res.data {
         Ok((data.secret_key, data.public_key))
     } else {
-        Err(CryptoError::KeyGenFailed(res.error.unwrap().message))
+        let msg = res
+            .error
+            .map(|e| e.message)
+            .unwrap_or_else(|| "unknown error".to_string());
+        Err(CryptoError::KeyGenFailed(msg))
     }
 }
