@@ -1,6 +1,6 @@
 use crate::crypto;
 use crate::error::SdkError;
-use fyc_db::sqlite::{RoleRepo, SessionRepo, UserRepo};
+use fyc_db::sqlite::{AuditRepo, RoleRepo, SessionRepo, UserRepo};
 use fyc_db::{DbError, DbPool};
 
 pub struct AuthService {
@@ -48,6 +48,17 @@ impl AuthService {
                 return Err(e.into());
             }
         };
+
+        if let Err(e) = AuditRepo::log_with_conn(
+            &conn,
+            user_id,
+            "user:register",
+            Some(user_id),
+            Some(username),
+        ) {
+            let _ = conn.execute("ROLLBACK", []);
+            return Err(e.into());
+        }
 
         let default_role = "kasir";
         let role_id = match RoleRepo::get_role_by_name_with_conn(&conn, default_role) {
