@@ -1,6 +1,6 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use fyc_db::connection::create_pool;
-use fyc_db::repositories::RoleRepo;
+use fyc_db::sqlite::RoleRepo;
 use fyc_sdk::*;
 use std::sync::atomic::{AtomicU64, Ordering};
 use tempfile::TempDir;

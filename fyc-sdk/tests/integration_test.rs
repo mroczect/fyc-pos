@@ -1,6 +1,6 @@
 use fyc_db::DbPool;
 use fyc_db::connection::create_pool;
-use fyc_db::repositories::{RoleRepo, UserRepo};
+use fyc_db::sqlite::{RoleRepo, UserRepo};
 use fyc_sdk::*;
 use std::sync::Arc;
 use tempfile::TempDir;

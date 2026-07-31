@@ -3,16 +3,33 @@ use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use std::path::Path;
 
-pub fn create_pool<P: AsRef<Path>>(db_path: P) -> Result<Pool<SqliteConnectionManager>, DbError> {
+pub struct PoolConfig {
+    pub max_size: u32,
+}
+
+impl Default for PoolConfig {
+    fn default() -> Self {
+        Self { max_size: 4 }
+    }
+}
+
+pub fn create_pool_with_config<P: AsRef<Path>>(
+    db_path: P,
+    config: PoolConfig,
+) -> Result<Pool<SqliteConnectionManager>, DbError> {
     let manager = SqliteConnectionManager::file(db_path)
         .with_init(|conn| conn.execute_batch("PRAGMA foreign_keys = ON;"));
     let pool = Pool::builder()
-        .max_size(4)
+        .max_size(config.max_size)
         .build(manager)
         .map_err(|e| DbError::PoolCreation(e.to_string()))?;
     let conn = pool.get()?;
     run_migrations(&conn)?;
     Ok(pool)
+}
+
+pub fn create_pool<P: AsRef<Path>>(db_path: P) -> Result<Pool<SqliteConnectionManager>, DbError> {
+    create_pool_with_config(db_path, PoolConfig::default())
 }
 
 pub fn run_migrations(conn: &rusqlite::Connection) -> Result<(), DbError> {
@@ -80,13 +97,13 @@ pub fn run_migrations(conn: &rusqlite::Connection) -> Result<(), DbError> {
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             updated_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
-        
+
         CREATE TABLE IF NOT EXISTS product_custom_fields (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
+            name TEXT NOT NULL UNIQUE,
             field_type TEXT NOT NULL CHECK(field_type IN ('text','number','boolean'))
         );
-        
+
         CREATE TABLE IF NOT EXISTS product_custom_values (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             product_id INTEGER NOT NULL,
@@ -96,7 +113,7 @@ pub fn run_migrations(conn: &rusqlite::Connection) -> Result<(), DbError> {
             FOREIGN KEY (field_id) REFERENCES product_custom_fields(id) ON DELETE CASCADE,
             UNIQUE(product_id, field_id)
         );
-        
+
         CREATE TABLE IF NOT EXISTS orders (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
@@ -106,7 +123,7 @@ pub fn run_migrations(conn: &rusqlite::Connection) -> Result<(), DbError> {
             FOREIGN KEY (user_id) REFERENCES users(id)
         );
         CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at);
-        
+
         CREATE TABLE IF NOT EXISTS order_items (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             order_id INTEGER NOT NULL,

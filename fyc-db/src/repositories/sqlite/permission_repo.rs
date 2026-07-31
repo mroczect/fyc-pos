@@ -1,19 +1,33 @@
+use crate::DbPool;
 use crate::error::DbError;
 use crate::models::Permission;
-use r2d2::Pool;
-use r2d2_sqlite::SqliteConnectionManager;
+use crate::repositories::traits::PermissionRepository;
 use rusqlite::{ErrorCode, params};
 
 pub struct PermissionRepo {
-    pool: Pool<SqliteConnectionManager>,
+    pool: DbPool,
 }
 
 impl PermissionRepo {
-    pub fn new(pool: Pool<SqliteConnectionManager>) -> Self {
+    pub fn new(pool: DbPool) -> Self {
         Self { pool }
     }
 
     pub fn create(&self, name: &str, description: &str) -> Result<i64, DbError> {
+        <Self as PermissionRepository>::create(self, name, description)
+    }
+
+    pub fn get_by_name(&self, name: &str) -> Result<Option<Permission>, DbError> {
+        <Self as PermissionRepository>::get_by_name(self, name)
+    }
+
+    pub fn get_user_permissions(&self, user_id: i64) -> Result<Vec<Permission>, DbError> {
+        <Self as PermissionRepository>::get_user_permissions(self, user_id)
+    }
+}
+
+impl PermissionRepository for PermissionRepo {
+    fn create(&self, name: &str, description: &str) -> Result<i64, DbError> {
         if name.trim().is_empty() {
             return Err(DbError::InvalidInput(
                 "Permission name cannot be empty".into(),
@@ -34,7 +48,7 @@ impl PermissionRepo {
         }
     }
 
-    pub fn get_by_name(&self, name: &str) -> Result<Option<Permission>, DbError> {
+    fn get_by_name(&self, name: &str) -> Result<Option<Permission>, DbError> {
         let conn = self.pool.get()?;
         let mut stmt =
             conn.prepare("SELECT id, name, description FROM permissions WHERE name = ?1")?;
@@ -51,7 +65,7 @@ impl PermissionRepo {
         }
     }
 
-    pub fn get_user_permissions(&self, user_id: i64) -> Result<Vec<Permission>, DbError> {
+    fn get_user_permissions(&self, user_id: i64) -> Result<Vec<Permission>, DbError> {
         let conn = self.pool.get()?;
         let mut stmt = conn.prepare(
             "SELECT DISTINCT p.id, p.name, p.description FROM permissions p

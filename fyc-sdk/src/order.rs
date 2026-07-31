@@ -1,7 +1,7 @@
 use crate::auth::AuthService;
 use crate::error::SdkError;
 use crate::permission::PermissionService;
-use fyc_db::repositories::{AuditRepo, OrderRepo, ProductRepo};
+use fyc_db::sqlite::{AuditRepo, OrderRepo, ProductRepo};
 use fyc_db::{DbError, DbPool, Order, OrderItem};
 
 pub struct OrderService {
@@ -33,6 +33,12 @@ impl OrderService {
     }
 
     pub fn create_order(&self, token: &str, items: &[(i64, i32)]) -> Result<i64, SdkError> {
+        if items.is_empty() {
+            return Err(SdkError::InvalidInput(
+                "Order must have at least one item".into(),
+            ));
+        }
+
         let user_id = self.check_permission(token, "order:create")?;
 
         let conn = self.pool.get().map_err(DbError::from)?;
@@ -56,9 +62,7 @@ impl OrderService {
             order_items.push((product_id, quantity, product.price));
         }
 
-        let order_id = self
-            .order_repo
-            .create_order_with_conn(&conn, user_id, "paid", total)
+        let order_id = OrderRepo::create_order_with_conn(&conn, user_id, "paid", total)
             .inspect_err(|_| {
                 let _ = conn.execute("ROLLBACK", []);
             })?;

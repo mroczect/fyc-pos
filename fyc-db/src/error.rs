@@ -23,6 +23,12 @@ pub enum DbError {
     #[error("Duplicate entry: {0}")]
     DuplicateEntry(String),
 
+    #[error("Foreign key violation: {0}")]
+    ForeignKeyViolation(String),
+
+    #[error("Constraint violation: {0}")]
+    ConstraintViolation(String),
+
     #[error("Internal error: {0}")]
     Internal(String),
 }

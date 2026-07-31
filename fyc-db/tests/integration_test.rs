@@ -1,6 +1,6 @@
 use fyc_db::DbError;
 use fyc_db::connection::create_pool;
-use fyc_db::repositories::{
+use fyc_db::sqlite::{
     AuditRepo, OrderRepo, PermissionRepo, ProductCustomRepo, ProductRepo, RoleRepo, SessionRepo,
     UserRepo,
 };
