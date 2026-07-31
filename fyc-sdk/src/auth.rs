@@ -1,6 +1,6 @@
 use crate::crypto;
 use crate::error::SdkError;
-use fyc_db::repositories::{RoleRepo, SessionRepo, UserRepo};
+use fyc_db::sqlite::{RoleRepo, SessionRepo, UserRepo};
 use fyc_db::{DbError, DbPool};
 
 pub struct AuthService {
@@ -35,7 +35,7 @@ impl AuthService {
         let conn = self.pool.get().map_err(DbError::from)?;
         conn.execute("BEGIN", []).map_err(DbError::from)?;
 
-        let user_id = match self.user_repo.create_user_with_conn(
+        let user_id = match UserRepo::create_user_with_conn(
             &conn,
             username,
             &password_hash,
@@ -50,21 +50,13 @@ impl AuthService {
         };
 
         let default_role = "kasir";
-        let role_id = match self
-            .role_repo
-            .get_role_by_name_with_conn(&conn, default_role)
-        {
+        let role_id = match RoleRepo::get_role_by_name_with_conn(&conn, default_role) {
             Ok(Some(r)) => r.id,
             Ok(None) => {
-                match self.role_repo.create_role_with_conn(
-                    &conn,
-                    default_role,
-                    "Default cashier role",
-                ) {
+                match RoleRepo::create_role_with_conn(&conn, default_role, "Default cashier role") {
                     Ok(id) => id,
                     Err(DbError::DuplicateEntry(_)) => {
-                        self.role_repo
-                            .get_role_by_name_with_conn(&conn, default_role)?
+                        RoleRepo::get_role_by_name_with_conn(&conn, default_role)?
                             .ok_or_else(|| SdkError::Internal("Role creation conflict".into()))?
                             .id
                     }
@@ -80,10 +72,7 @@ impl AuthService {
             }
         };
 
-        if let Err(e) = self
-            .role_repo
-            .assign_role_to_user_with_conn(&conn, user_id, role_id)
-        {
+        if let Err(e) = RoleRepo::assign_role_to_user_with_conn(&conn, user_id, role_id) {
             let _ = conn.execute("ROLLBACK", []);
             return Err(e.into());
         }
