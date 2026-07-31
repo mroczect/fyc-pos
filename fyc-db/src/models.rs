@@ -1,6 +1,6 @@
 use zeroize::ZeroizeOnDrop;
 
-#[derive(Debug, Clone, ZeroizeOnDrop)]
+#[derive(Clone, ZeroizeOnDrop)]
 pub struct User {
     pub id: i64,
     pub username: String,
@@ -10,6 +10,21 @@ pub struct User {
     pub is_active: bool,
     pub created_at: String,
     pub updated_at: String,
+}
+
+impl std::fmt::Debug for User {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("User")
+            .field("id", &self.id)
+            .field("username", &self.username)
+            .field("password_hash", &"***")
+            .field("public_key", &"***")
+            .field("encrypted_private_key", &"***")
+            .field("is_active", &self.is_active)
+            .field("created_at", &self.created_at)
+            .field("updated_at", &self.updated_at)
+            .finish()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -25,13 +40,25 @@ pub struct UserRole {
     pub role_id: i64,
 }
 
-#[derive(Debug, Clone, ZeroizeOnDrop)]
+#[derive(Clone, ZeroizeOnDrop)]
 pub struct Session {
     pub id: i64,
     pub user_id: i64,
     pub token_hash: String,
     pub created_at: String,
     pub expires_at: String,
+}
+
+impl std::fmt::Debug for Session {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Session")
+            .field("id", &self.id)
+            .field("user_id", &self.user_id)
+            .field("token_hash", &"***")
+            .field("created_at", &self.created_at)
+            .field("expires_at", &self.expires_at)
+            .finish()
+    }
 }
 
 #[derive(Debug, Clone)]
