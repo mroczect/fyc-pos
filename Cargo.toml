@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "libfycdb",
+    "libfycdb", "libfycrypto",
     "libfycsdk",
 ]
 resolver = "2"
