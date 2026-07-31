@@ -7,3 +7,11 @@ edition.workspace = true
 repository.workspace = true
 
 [dependencies]
+lib_fyc_role = { path = "../lib_fyc_role" }
+blake3 = "1.8"
+serde = { version = "1", features = ["derive"] }
+postcard = { version = "1", features = ["alloc"] } 
+base64 = "0.23"
+zeroize = { version = "1", features = ["derive"] }
+thiserror = "2"
+tracing = "0.1"
