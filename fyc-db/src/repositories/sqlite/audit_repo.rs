@@ -1,6 +1,7 @@
 use crate::DbPool;
 use crate::error::DbError;
 use crate::repositories::traits::AuditRepository;
+use crate::validation;
 use rusqlite::{ErrorCode, params};
 
 pub struct AuditRepo {
@@ -19,16 +20,23 @@ impl AuditRepo {
         target_user_id: Option<i64>,
         details: Option<&str>,
     ) -> Result<(), DbError> {
-        if action.trim().is_empty() {
-            return Err(DbError::InvalidInput("Action cannot be empty".into()));
+        validation::validate_non_empty_text(action, "action", 200)?;
+
+        if let Some(d) = details
+            && d.len() > 500
+        {
+            return Err(DbError::InvalidInput("Details too long (max 500)".into()));
         }
+
+        let admin_param: Option<i64> = if admin_id == 0 { None } else { Some(admin_id) };
+
         match conn.execute(
             "INSERT INTO audit_log (admin_id, action, target_user_id, details) VALUES (?1, ?2, ?3, ?4)",
-            params![admin_id, action.trim(), target_user_id, details],
+            params![admin_param, action.trim(), target_user_id, details],
         ) {
             Ok(_) => Ok(()),
             Err(rusqlite::Error::SqliteFailure(err, _)) if err.code == ErrorCode::ConstraintViolation =>
-                Err(DbError::ForeignKeyViolation("Admin user does not exist".into())),
+                Err(DbError::ForeignKeyViolation("Referenced user does not exist".into())),
             Err(e) => Err(DbError::QueryError(e)),
         }
     }

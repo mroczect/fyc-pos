@@ -49,13 +49,9 @@ impl AuthService {
             }
         };
 
-        if let Err(e) = AuditRepo::log_with_conn(
-            &conn,
-            user_id,
-            "user:register",
-            Some(user_id),
-            Some(username),
-        ) {
+        if let Err(e) =
+            AuditRepo::log_with_conn(&conn, 0, "user:register", Some(user_id), Some(username))
+        {
             let _ = conn.execute("ROLLBACK", []);
             return Err(e.into());
         }

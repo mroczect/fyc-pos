@@ -38,6 +38,30 @@ impl RoleRepo {
         Self::insert_user_role(conn, user_id, role_id)
     }
 
+    pub fn assign_permission_to_role_with_conn(
+        conn: &rusqlite::Connection,
+        role_id: i64,
+        permission_id: i64,
+    ) -> Result<(), DbError> {
+        Self::insert_role_permission(conn, role_id, permission_id)
+    }
+
+    pub fn remove_permission_from_role_with_conn(
+        conn: &rusqlite::Connection,
+        role_id: i64,
+        permission_id: i64,
+    ) -> Result<(), DbError> {
+        let affected = conn.execute(
+            "DELETE FROM role_permissions WHERE role_id = ?1 AND permission_id = ?2",
+            params![role_id, permission_id],
+        )?;
+        if affected == 0 {
+            Err(DbError::NotFound("Role or permission not found".into()))
+        } else {
+            Ok(())
+        }
+    }
+
     pub fn insert_role(
         conn: &rusqlite::Connection,
         name: &str,
@@ -72,6 +96,27 @@ impl RoleRepo {
             {
                 Err(DbError::DuplicateEntry(
                     "User already has this role or user/role does not exist".into(),
+                ))
+            }
+            Err(e) => Err(DbError::QueryError(e)),
+        }
+    }
+
+    pub fn insert_role_permission(
+        conn: &rusqlite::Connection,
+        role_id: i64,
+        permission_id: i64,
+    ) -> Result<(), DbError> {
+        match conn.execute(
+            "INSERT INTO role_permissions (role_id, permission_id) VALUES (?1, ?2)",
+            params![role_id, permission_id],
+        ) {
+            Ok(_) => Ok(()),
+            Err(rusqlite::Error::SqliteFailure(err, _))
+                if err.code == ErrorCode::ConstraintViolation =>
+            {
+                Err(DbError::DuplicateEntry(
+                    "Permission already assigned or role/permission does not exist".into(),
                 ))
             }
             Err(e) => Err(DbError::QueryError(e)),
@@ -151,27 +196,6 @@ impl RoleRepo {
             roles.push(role?);
         }
         Ok(roles)
-    }
-
-    pub fn insert_role_permission(
-        conn: &rusqlite::Connection,
-        role_id: i64,
-        permission_id: i64,
-    ) -> Result<(), DbError> {
-        match conn.execute(
-            "INSERT INTO role_permissions (role_id, permission_id) VALUES (?1, ?2)",
-            params![role_id, permission_id],
-        ) {
-            Ok(_) => Ok(()),
-            Err(rusqlite::Error::SqliteFailure(err, _))
-                if err.code == ErrorCode::ConstraintViolation =>
-            {
-                Err(DbError::DuplicateEntry(
-                    "Permission already assigned or role/permission does not exist".into(),
-                ))
-            }
-            Err(e) => Err(DbError::QueryError(e)),
-        }
     }
 }
 
