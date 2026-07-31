@@ -1,6 +1,6 @@
 use crate::error::SdkError;
 use argon2::{
-    Argon2,
+    Algorithm, Argon2, Params, Version,
     password_hash::{PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
 };
 use getrandom::getrandom;
@@ -20,7 +20,11 @@ pub fn hash_token(token: &str) -> String {
 
 pub fn hash_password(password: &str) -> Result<String, SdkError> {
     let salt = SaltString::generate(&mut OsRng);
-    let argon2 = Argon2::default();
+    let argon2 = Argon2::new(
+        Algorithm::Argon2id,
+        Version::V0x13,
+        Params::new(65536, 3, 1, None).unwrap(),
+    );
     let hash = argon2
         .hash_password(password.as_bytes(), &salt)
         .map_err(|e| SdkError::Crypto(format!("Password hashing failed: {e}")))?;
@@ -28,7 +32,11 @@ pub fn hash_password(password: &str) -> Result<String, SdkError> {
 }
 
 pub fn verify_password(password: &str, hash: &str) -> Result<bool, SdkError> {
-    let argon2 = Argon2::default();
+    let argon2 = Argon2::new(
+        Algorithm::Argon2id,
+        Version::V0x13,
+        Params::new(65536, 3, 1, None).unwrap(),
+    );
     let parsed_hash = argon2::password_hash::PasswordHash::new(hash)
         .map_err(|e| SdkError::Crypto(format!("Invalid password hash format: {e}")))?;
     Ok(argon2
