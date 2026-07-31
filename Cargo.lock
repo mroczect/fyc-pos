@@ -828,7 +828,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
 
 [[package]]
+name = "libfycaccount"
+version = "0.3.0"
+
+[[package]]
 name = "libfycdb"
+version = "0.3.0"
+
+[[package]]
+name = "libfycrole"
 version = "0.3.0"
 
 [[package]]
@@ -843,6 +851,10 @@ dependencies = [
 
 [[package]]
 name = "libfycsdk"
+version = "0.3.0"
+
+[[package]]
+name = "libfyctoken"
 version = "0.3.0"
 
 [[package]]

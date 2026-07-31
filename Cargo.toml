@@ -1,7 +1,7 @@
 [workspace]
-members = [
-    "libfycdb", "libfycrypto",
-    "libfycsdk",
+members = ["libfycaccount",
+    "libfycdb", "libfycrole", "libfycrypto",
+    "libfycsdk", "libfyctoken",
 ]
 resolver = "2"
 
