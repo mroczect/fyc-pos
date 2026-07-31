@@ -7,3 +7,14 @@ edition.workspace = true
 repository.workspace = true
 
 [dependencies]
+lib_fyc_crypto = { path = "../lib_fyc_crypto" }
+lib_fyc_role = { path = "../lib_fyc_role" }
+lib_fyc_token = { path = "../lib_fyc_token" }
+argon2 = "0.5"
+zeroize = { version = "1", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+postcard = "1"
+uuid = { version = "1", features = ["v4"] }
+thiserror = "2"
+tracing = "0.1"
+rand = "0.8"
