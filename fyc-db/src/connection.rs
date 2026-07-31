@@ -81,12 +81,12 @@ pub fn run_migrations(conn: &rusqlite::Connection) -> Result<(), DbError> {
         );
         CREATE TABLE IF NOT EXISTS audit_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            admin_id INTEGER NOT NULL,
+            admin_id INTEGER,
             action TEXT NOT NULL,
             target_user_id INTEGER,
             details TEXT,
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
-            FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE
+            FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE SET NULL
         );
         CREATE TABLE IF NOT EXISTS products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
