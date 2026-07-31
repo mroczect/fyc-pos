@@ -1,0 +1,13 @@
+[workspace]
+members = [
+    "libfycdb",
+    "libfycsdk",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.3.0"
+authors = ["mroczect <mroczect@proton.me>"]
+license = "MIT"
+edition = "2024"
+repository = "https://github.com/mroczect/fyc-pos"
