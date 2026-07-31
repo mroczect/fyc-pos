@@ -1,9 +1,0 @@
-[workspace]
-members = [
-    "fyc-db",
-    "fyc-sdk",
-    "fyc-server",
-    "fyc-pos",
-]
-resolver = "2"
-
