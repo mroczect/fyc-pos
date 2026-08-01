@@ -48,4 +48,4 @@ ci: fmt-check clippy test
 ci-full: fmt-check clippy test bench
 
 snap:
-	snapcat lib_fyc_account/ -f markdown -o dev/lib_fyc_account.md && snapcat lib_fyc_crypto/ -f markdown -o dev/lib_fyc_crypto.md && snapcat lib_fyc_role/ -f markdown -o dev/lib_fyc_role.md && snapcat lib_fyc_token/ -f markdown -o dev/lib_fyc_token.md && snapcat lib_fyc_db/ -f markdown -o dev/lib_fyc_db.md && snapcat lib_fyc_sdk/ -f markdown -o dev/lib_fyc_sdk.md
+	snapcat lib_fyc_account/ -f markdown -o dev/lib/lib_fyc_account.md && snapcat lib_fyc_crypto/ -f markdown -o dev/lib/lib_fyc_crypto.md && snapcat lib_fyc_role/ -f markdown -o dev/lib/lib_fyc_role.md && snapcat lib_fyc_token/ -f markdown -o dev/lib/lib_fyc_token.md && snapcat lib_fyc_db/ -f markdown -o dev/lib/lib_fyc_db.md && snapcat lib_fyc_sdk/ -f markdown -o dev/lib/lib_fyc_sdk.md && snapcat dev/lib -f markdown -o .snapcat.md
