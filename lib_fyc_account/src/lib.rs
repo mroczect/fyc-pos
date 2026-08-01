@@ -5,12 +5,13 @@ use argon2::{
     Algorithm, Argon2, Params, Version,
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
 };
-use error::AccountError;
+pub use error::AccountError;
 use lib_fyc_role::types::Role;
 use lib_fyc_token::{TokenManager, types::TokenPayload};
 use once_cell::sync::Lazy;
 use tracing::instrument;
-use types::{Account, Credentials};
+pub use types::Credentials;
+use types::*;
 use uuid::Uuid;
 use zeroize::Zeroizing;
 
