@@ -1,13 +1,2 @@
 [workspace]
-members = ["lib_fyc_account",
-    "lib_fyc_db", "lib_fyc_role", "lib_fyc_crypto",
-    "lib_fyc_sdk", "lib_fyc_token", "app_fyc",
-]
-resolver = "2"
-
-[workspace.package]
-version = "0.3.0"
-authors = ["mroczect <mroczect@proton.me>"]
-license = "MIT"
-edition = "2024"
-repository = "https://github.com/mroczect/fyc-pos"
+members = ["fyc-server", "fyc-client"]
